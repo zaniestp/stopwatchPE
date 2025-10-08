@@ -60,7 +60,7 @@
         </header>
 
         <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-8">
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-center">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 items-center">
                 <div class="sm:col-span-2 md:col-span-1">
                     <label for="csvFile" class="block text-sm font-medium text-gray-700 mb-1">1. Upload CSV</label>
                     <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
@@ -73,6 +73,9 @@
                 </div>
                 <div class="flex-grow">
                      <button id="copyResults" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Copy Results</button>
+                </div>
+                 <div class="flex-grow">
+                    <button id="toggleViewBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Hide Unmarked</button>
                 </div>
                 <div class="flex-grow">
                     <button id="resetAll" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Reset All</button>
@@ -128,9 +131,11 @@
             const modalMessage = document.getElementById('modalMessage');
             const modalCloseBtn = document.getElementById('modalCloseBtn');
             const masterMarkCheckbox = document.getElementById('masterMarkCheckbox');
+            const toggleViewBtn = document.getElementById('toggleViewBtn');
             
-            // State for running timers
+            // State variables
             let runningTimers = {};
+            let isShowingAll = true;
 
             // --- 1. File Upload and Table Generation ---
             csvFileInput.addEventListener('change', (event) => {
@@ -174,7 +179,6 @@
                 data.forEach((item, index) => {
                     const row = tableBody.insertRow();
                     row.id = `row-${index}`;
-                    // Add alternating row colors for better readability
                     row.className = index % 2 === 0 ? 'bg-blue-50 border-b hover:bg-blue-100' : 'bg-green-50 border-b hover:bg-green-100';
                     
                     row.innerHTML = `
@@ -194,9 +198,12 @@
                         <td class="px-6 py-4 text-center text-base font-semibold timing-cell" id="timing2-${index}">00:00.000</td>
                     `;
                 });
+                 // Reset view state for new list
+                isShowingAll = true;
+                updateToggleViewButton();
             }
 
-            // --- 2. Timer and Lap Logic ---
+            // --- 2. Timer, Lap, and Visibility Logic ---
             tableBody.addEventListener('click', (event) => {
                 const target = event.target;
                 if (target.classList.contains('sw-button')) {
@@ -209,6 +216,15 @@
                     if (target.classList.contains('lap-plus')) currentLaps++;
                     else if (target.classList.contains('lap-minus') && currentLaps > 1) currentLaps--;
                     lapCountSpan.textContent = currentLaps;
+                }
+            });
+
+            tableBody.addEventListener('change', (event) => {
+                if(event.target.classList.contains('mark-checkbox')) {
+                    // If we are in "hide" mode, an uncheck should hide the row immediately.
+                    if(!isShowingAll) {
+                        applyRowVisibility();
+                    }
                 }
             });
             
@@ -254,16 +270,14 @@
             massStart1Btn.addEventListener('click', () => massStart(1));
             massStart2Btn.addEventListener('click', () => massStart(2));
             copyResultsBtn.addEventListener('click', copyResults);
+
             resetAllBtn.addEventListener('click', () => {
-                // Stop all running timers
                 Object.values(runningTimers).forEach(timer => clearInterval(timer.intervalId));
                 runningTimers = {};
-
-                // Iterate over each participant row
                 tableBody.querySelectorAll('tr').forEach(row => {
                     const markCheckbox = row.querySelector('.mark-checkbox');
                     if (markCheckbox) {
-                        markCheckbox.checked = true; // Select all checkboxes
+                        markCheckbox.checked = true;
                         row.querySelector('.lap-count').textContent = '1';
                         row.querySelectorAll('.timing-cell').forEach(cell => cell.textContent = '00:00.000');
                         row.querySelectorAll('.sw-button').forEach(button => {
@@ -273,6 +287,9 @@
                         });
                     }
                 });
+                isShowingAll = true;
+                applyRowVisibility();
+                updateToggleViewButton();
             });
 
             masterMarkCheckbox.addEventListener('change', () => {
@@ -280,9 +297,39 @@
                 allCheckboxes.forEach(checkbox => {
                     checkbox.checked = !checkbox.checked;
                 });
-                // Reset the master checkbox to act as a trigger, not a stateful toggle
+                if (!isShowingAll) {
+                    applyRowVisibility();
+                }
                 masterMarkCheckbox.checked = false;
             });
+
+            toggleViewBtn.addEventListener('click', () => {
+                isShowingAll = !isShowingAll;
+                applyRowVisibility();
+                updateToggleViewButton();
+            });
+
+            function applyRowVisibility() {
+                tableBody.querySelectorAll('tr').forEach(row => {
+                    if (isShowingAll) {
+                        row.classList.remove('hidden');
+                    } else {
+                        const markCheckbox = row.querySelector('.mark-checkbox');
+                        if (markCheckbox && !markCheckbox.checked) {
+                            row.classList.add('hidden');
+                        } else {
+                            row.classList.remove('hidden');
+                        }
+                    }
+                });
+            }
+             function updateToggleViewButton() {
+                toggleViewBtn.textContent = isShowingAll ? 'Hide Unmarked' : 'Show All';
+                toggleViewBtn.classList.toggle('bg-yellow-500', isShowingAll);
+                toggleViewBtn.classList.toggle('hover:bg-yellow-600', isShowingAll);
+                toggleViewBtn.classList.toggle('bg-indigo-500', !isShowingAll);
+                toggleViewBtn.classList.toggle('hover:bg-indigo-600', !isShowingAll);
+            }
 
             function massStart(timerType) {
                 tableBody.querySelectorAll('tr').forEach((row, index) => {
@@ -350,7 +397,6 @@
                 
                 let versionHtml = '';
                 try {
-                    // Use the "raw" URL for plain text content
                     const response = await fetch('https://raw.githubusercontent.com/zaniestp/stopwatchPE/main/ver');
                     if (response.ok) {
                         const versionText = await response.text();
@@ -360,7 +406,6 @@
                     }
                 } catch (error) {
                     console.error('Failed to fetch version:', error);
-                    // Silently fail if there's a network error, versionHtml will be empty
                 }
 
                 const creditsContent = `
@@ -381,5 +426,4 @@
     </script>
 </body>
 </html>
-
 
