@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHS Stopwatch-PE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom modal styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-backdrop.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-backdrop.visible .modal-content {
+            transform: scale(1);
+        }
+        .timing-cell {
+            font-family: 'Courier New', Courier, monospace;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Physical Run Stopwatch</h1>
+            <p class="text-gray-600 mt-2">Upload a CSV file of participants to begin timing.</p>
+        </header>
+
+        <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-center">
+                <div class="sm:col-span-2 md:col-span-1">
+                    <label for="csvFile" class="block text-sm font-medium text-gray-700 mb-1">1. Upload CSV</label>
+                    <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                </div>
+                <div class="flex-grow">
+                    <button id="massStart1" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Mass Start 1</button>
+                </div>
+                <div class="flex-grow">
+                    <button id="massStart2" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Mass Start 2</button>
+                </div>
+                <div class="flex-grow">
+                     <button id="copyResults" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Copy Results</button>
+                </div>
+                <div class="flex-grow">
+                    <button id="resetAll" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Reset All</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto bg-white rounded-xl shadow-lg">
+            <table class="w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                        <th scope="col" class="p-4 text-center">Marks</th>
+                        <th scope="col" class="px-6 py-3">Name</th>
+                        <th scope="col" class="px-6 py-3">Class</th>
+                        <th scope="col" class="px-6 py-3 text-center">Laps</th>
+                        <th scope="col" class="px-6 py-3 text-center">Stopwatch 1</th>
+                        <th scope="col" class="px-6 py-3 text-center">Timing 1</th>
+                        <th scope="col" class="px-6 py-3 text-center">Stopwatch 2</th>
+                        <th scope="col" class="px-6 py-3 text-center">Timing 2</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                   <!-- Placeholder content -->
+                   <tr class="text-center text-gray-400">
+                       <td colspan="8" class="px-6 py-12">Upload a CSV file to see participant data.</td>
+                   </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="customModal" class="modal-backdrop">
+        <div class="modal-content text-center">
+            <p id="modalMessage" class="mb-4 text-lg">Message goes here</p>
+            <button id="modalCloseBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">OK</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM element references
+            const csvFileInput = document.getElementById('csvFile');
+            const tableBody = document.getElementById('tableBody');
+            const massStart1Btn = document.getElementById('massStart1');
+            const massStart2Btn = document.getElementById('massStart2');
+            const copyResultsBtn = document.getElementById('copyResults');
+            const resetAllBtn = document.getElementById('resetAll');
+            const modal = document.getElementById('customModal');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalCloseBtn = document.getElementById('modalCloseBtn');
+            
+            // State for running timers
+            let runningTimers = {};
+
+            // --- 1. File Upload and Table Generation ---
+            csvFileInput.addEventListener('change', handleFileUpload);
+
+            function handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    try {
+                        const data = parseCSV(text);
+                        if (data.length > 0) {
+                            populateTable(data);
+                        } else {
+                            showModal('CSV file is empty or invalid.');
+                        }
+                    } catch (error) {
+                         showModal('Error parsing CSV file. Please check the format.');
+                         console.error("CSV Parse Error:", error);
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function parseCSV(text) {
+                const lines = text.trim().split(/\r?\n/);
+                const headers = lines.shift().toLowerCase().split(',').map(h => h.trim());
+                
+                if (headers[0] !== 'name' || headers[1] !== 'class') {
+                    throw new Error('CSV headers must be "name,class"');
+                }
+
+                return lines.map(line => {
+                    const values = line.split(',');
+                    return { name: (values[0] || '').trim(), class: (values[1] || '').trim() };
+                }).filter(item => item.name); // Filter out empty rows
+            }
+
+            function populateTable(data) {
+                resetAll();
+                tableBody.innerHTML = ''; // Clear placeholder
+                data.forEach((item, index) => {
+                    const row = tableBody.insertRow();
+                    row.id = `row-${index}`;
+                    row.className = 'bg-white border-b hover:bg-gray-50';
+                    
+                    row.innerHTML = `
+                        <td class="p-4 text-center"><input type="checkbox" class="mark-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked></td>
+                        <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${item.name}</td>
+                        <td class="px-6 py-4">${item.class}</td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-center space-x-2">
+                                <button class="lap-btn lap-minus bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold w-6 h-6 rounded-full flex items-center justify-center">-</button>
+                                <span class="lap-count font-semibold text-lg w-6 text-center">1</span>
+                                <button class="lap-btn lap-plus bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold w-6 h-6 rounded-full flex items-center justify-center">+</button>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center"><button class="w-20 sw-button bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-xs" data-timer-id="sw1-${index}">START</button></td>
+                        <td class="px-6 py-4 text-center text-base font-semibold timing-cell" id="timing1-${index}">00:00.000</td>
+                        <td class="px-6 py-4 text-center"><button class="w-20 sw-button bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-xs" data-timer-id="sw2-${index}">START</button></td>
+                        <td class="px-6 py-4 text-center text-base font-semibold timing-cell" id="timing2-${index}">00:00.000</td>
+                    `;
+                });
+            }
+
+            // --- 2. Timer and Lap Logic ---
+            tableBody.addEventListener('click', handleTableClick);
+
+            function handleTableClick(event) {
+                const target = event.target;
+
+                if (target.classList.contains('sw-button')) {
+                    const timerId = target.dataset.timerId;
+                    if (target.textContent === 'START') {
+                        startTimer(timerId, target);
+                    } else {
+                        stopTimer(timerId, target);
+                    }
+                } else if (target.classList.contains('lap-btn')) {
+                    const lapCountSpan = target.parentElement.querySelector('.lap-count');
+                    let currentLaps = parseInt(lapCountSpan.textContent, 10);
+                    if (target.classList.contains('lap-plus')) {
+                        currentLaps++;
+                    } else if (target.classList.contains('lap-minus') && currentLaps > 1) {
+                        currentLaps--;
+                    }
+                    lapCountSpan.textContent = currentLaps;
+                }
+            }
+            
+            function startTimer(timerId, buttonElement) {
+                const index = timerId.split('-')[1];
+                const timerType = timerId.startsWith('sw1') ? 1 : 2;
+                const timingCell = document.getElementById(`timing${timerType}-${index}`);
+                
+                timingCell.textContent = '00:00.000';
+                
+                const startTime = performance.now();
+                const intervalId = setInterval(() => {
+                    const elapsedTime = performance.now() - runningTimers[timerId].startTime;
+                    timingCell.textContent = formatTime(elapsedTime);
+                }, 47); // Update frequently for smooth display
+
+                runningTimers[timerId] = { startTime, intervalId, timingCell };
+                
+                buttonElement.textContent = 'STOP';
+                buttonElement.classList.replace('bg-green-500', 'bg-red-500');
+                buttonElement.classList.replace('hover:bg-green-600', 'hover:bg-red-600');
+            }
+
+            function stopTimer(timerId, buttonElement) {
+                if (runningTimers[timerId]) {
+                    clearInterval(runningTimers[timerId].intervalId);
+                    const finalElapsedTime = performance.now() - runningTimers[timerId].startTime;
+                    runningTimers[timerId].timingCell.textContent = formatTime(finalElapsedTime);
+                    delete runningTimers[timerId];
+                }
+                buttonElement.textContent = 'START';
+                buttonElement.classList.replace('bg-red-500', 'bg-green-500');
+                buttonElement.classList.replace('hover:bg-red-600', 'hover:bg-green-600');
+            }
+
+            function formatTime(milliseconds) {
+                const totalSeconds = Math.floor(milliseconds / 1000);
+                const ms = Math.floor(milliseconds % 1000).toString().padStart(3, '0');
+                const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+                const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+                return `${minutes}:${seconds}.${ms}`;
+            }
+
+            // --- 3. Control Panel Logic ---
+            massStart1Btn.addEventListener('click', () => massStart(1));
+            massStart2Btn.addEventListener('click', () => massStart(2));
+            copyResultsBtn.addEventListener('click', copyResults);
+            resetAllBtn.addEventListener('click', resetAll);
+
+            function massStart(timerType) {
+                tableBody.querySelectorAll('tr').forEach((row, index) => {
+                    const markCheckbox = row.querySelector('.mark-checkbox');
+                    if (markCheckbox && markCheckbox.checked) {
+                        const button = row.querySelector(`[data-timer-id="sw${timerType}-${index}"]`);
+                        if (button && button.textContent === 'START') {
+                            button.click();
+                        }
+                    }
+                });
+            }
+
+            function copyResults() {
+                 if (tableBody.querySelectorAll('tr').length === 0 || tableBody.querySelector('td[colspan="8"]')) {
+                    showModal("No data to copy.");
+                    return;
+                }
+                let contentToCopy = '"Name","Class","Laps","Timing1","Timing2"\n';
+                let copiedCount = 0;
+                tableBody.querySelectorAll('tr').forEach((row) => {
+                    const markCheckbox = row.querySelector('.mark-checkbox');
+                    if (markCheckbox && markCheckbox.checked) {
+                        const name = row.cells[1].textContent;
+                        const studentClass = row.cells[2].textContent;
+                        const lapCount = row.querySelector('.lap-count').textContent;
+                        const timing1 = row.cells[5].textContent;
+                        const timing2 = row.cells[7].textContent;
+                        contentToCopy += `"${name}","${studentClass}","${lapCount}","${timing1}","${timing2}"\n`;
+                        copiedCount++;
+                    }
+                });
+                
+                if(copiedCount === 0){
+                    showModal("No participants are marked to be copied.");
+                    return;
+                }
+
+                const textarea = document.createElement('textarea');
+                textarea.value = contentToCopy;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showModal('Results for marked participants copied to clipboard!');
+                } catch (err) {
+                    showModal('Failed to copy results.');
+                    console.error('Clipboard copy error:', err);
+                }
+                document.body.removeChild(textarea);
+            }
+
+            function resetAll() {
+                // Stop all running timers before making UI changes
+                Object.values(runningTimers).forEach(timer => clearInterval(timer.intervalId));
+                runningTimers = {};
+
+                // Iterate over each participant row in the table
+                tableBody.querySelectorAll('tr').forEach(row => {
+                    // Check if it's a valid data row, not the placeholder
+                    if (row.querySelector('.mark-checkbox')) {
+                        // Reset lap counter to 1
+                        const lapCountSpan = row.querySelector('.lap-count');
+                        if (lapCountSpan) {
+                            lapCountSpan.textContent = '1';
+                        }
+
+                        // Reset both timing cells to zero
+                        const timingCells = row.querySelectorAll('.timing-cell');
+                        timingCells.forEach(cell => {
+                            cell.textContent = '00:00.000';
+                        });
+
+                        // Reset both stopwatch buttons to the 'START' state
+                        const stopwatchButtons = row.querySelectorAll('.sw-button');
+                        stopwatchButtons.forEach(button => {
+                            button.textContent = 'START';
+                            button.classList.remove('bg-red-500', 'hover:bg-red-600');
+                            button.classList.add('bg-green-500', 'hover:bg-green-600');
+                        });
+                    }
+                });
+            }
+
+            // --- 4. Custom Modal ---
+            function showModal(message) {
+                modalMessage.textContent = message;
+                modal.classList.add('visible');
+            }
+
+            function hideModal() {
+                modal.classList.remove('visible');
+            }
+
+            modalCloseBtn.addEventListener('click', hideModal);
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    hideModal();
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>
+
+
