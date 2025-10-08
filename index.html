@@ -84,7 +84,9 @@
             <table class="w-full text-sm text-left text-gray-500">
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
-                        <th scope="col" class="p-4 text-center">Marks</th>
+                        <th scope="col" class="p-4 text-center">
+                            <input type="checkbox" id="masterMarkCheckbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" title="Invert All Selections">
+                        </th>
                         <th scope="col" class="px-6 py-3">Name</th>
                         <th scope="col" class="px-6 py-3">Class</th>
                         <th scope="col" class="px-6 py-3 text-center">Laps</th>
@@ -125,6 +127,7 @@
             const modal = document.getElementById('customModal');
             const modalMessage = document.getElementById('modalMessage');
             const modalCloseBtn = document.getElementById('modalCloseBtn');
+            const masterMarkCheckbox = document.getElementById('masterMarkCheckbox');
             
             // State for running timers
             let runningTimers = {};
@@ -257,7 +260,9 @@
 
                 // Iterate over each participant row
                 tableBody.querySelectorAll('tr').forEach(row => {
-                    if (row.querySelector('.mark-checkbox')) {
+                    const markCheckbox = row.querySelector('.mark-checkbox');
+                    if (markCheckbox) {
+                        markCheckbox.checked = true; // Select all checkboxes
                         row.querySelector('.lap-count').textContent = '1';
                         row.querySelectorAll('.timing-cell').forEach(cell => cell.textContent = '00:00.000');
                         row.querySelectorAll('.sw-button').forEach(button => {
@@ -267,6 +272,15 @@
                         });
                     }
                 });
+            });
+
+            masterMarkCheckbox.addEventListener('change', () => {
+                const allCheckboxes = tableBody.querySelectorAll('.mark-checkbox');
+                allCheckboxes.forEach(checkbox => {
+                    checkbox.checked = !checkbox.checked;
+                });
+                // Reset the master checkbox to act as a trigger, not a stateful toggle
+                masterMarkCheckbox.checked = false;
             });
 
             function massStart(timerType) {
