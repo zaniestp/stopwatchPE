@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHS Stopwatch-PE</title>
+    <title>PHS Run Stopwatch</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -37,6 +37,8 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transform: scale(0.95);
             transition: transform 0.3s ease;
+            width: 90%;
+            max-width: 500px;
         }
         .modal-backdrop.visible .modal-content {
             transform: scale(1);
@@ -50,8 +52,11 @@
 
     <div class="container mx-auto p-4 md:p-8 max-w-6xl">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">Physical Run Stopwatch</h1>
+            <h1 class="text-4xl font-bold text-gray-900">PHS Run Stopwatch</h1>
             <p class="text-gray-600 mt-2">Upload a CSV file of participants to begin timing.</p>
+            <div class="mt-2">
+                <a href="#" id="creditsLink" class="text-sm text-blue-600 hover:underline">Credits</a>
+            </div>
         </header>
 
         <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-8">
@@ -102,8 +107,8 @@
     <!-- Custom Modal -->
     <div id="customModal" class="modal-backdrop">
         <div class="modal-content text-center">
-            <p id="modalMessage" class="mb-4 text-lg">Message goes here</p>
-            <button id="modalCloseBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">OK</button>
+            <div id="modalMessage" class="mb-4"></div>
+            <button id="modalCloseBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Close</button>
         </div>
     </div>
 
@@ -116,6 +121,7 @@
             const massStart2Btn = document.getElementById('massStart2');
             const copyResultsBtn = document.getElementById('copyResults');
             const resetAllBtn = document.getElementById('resetAll');
+            const creditsLink = document.getElementById('creditsLink');
             const modal = document.getElementById('customModal');
             const modalMessage = document.getElementById('modalMessage');
             const modalCloseBtn = document.getElementById('modalCloseBtn');
@@ -124,9 +130,7 @@
             let runningTimers = {};
 
             // --- 1. File Upload and Table Generation ---
-            csvFileInput.addEventListener('change', handleFileUpload);
-
-            function handleFileUpload(event) {
+            csvFileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
 
@@ -141,30 +145,29 @@
                             showModal('CSV file is empty or invalid.');
                         }
                     } catch (error) {
-                         showModal('Error parsing CSV file. Please check the format.');
+                         showModal(`Error parsing CSV file: ${error.message}`);
                          console.error("CSV Parse Error:", error);
                     }
                 };
                 reader.readAsText(file);
-            }
+            });
 
             function parseCSV(text) {
                 const lines = text.trim().split(/\r?\n/);
                 const headers = lines.shift().toLowerCase().split(',').map(h => h.trim());
                 
                 if (headers[0] !== 'name' || headers[1] !== 'class') {
-                    throw new Error('CSV headers must be "name,class"');
+                    throw new Error('Headers must be "name,class"');
                 }
 
                 return lines.map(line => {
                     const values = line.split(',');
                     return { name: (values[0] || '').trim(), class: (values[1] || '').trim() };
-                }).filter(item => item.name); // Filter out empty rows
+                }).filter(item => item.name);
             }
 
             function populateTable(data) {
-                resetAll();
-                tableBody.innerHTML = ''; // Clear placeholder
+                tableBody.innerHTML = '';
                 data.forEach((item, index) => {
                     const row = tableBody.insertRow();
                     row.id = `row-${index}`;
@@ -190,45 +193,34 @@
             }
 
             // --- 2. Timer and Lap Logic ---
-            tableBody.addEventListener('click', handleTableClick);
-
-            function handleTableClick(event) {
+            tableBody.addEventListener('click', (event) => {
                 const target = event.target;
-
                 if (target.classList.contains('sw-button')) {
                     const timerId = target.dataset.timerId;
-                    if (target.textContent === 'START') {
-                        startTimer(timerId, target);
-                    } else {
-                        stopTimer(timerId, target);
-                    }
+                    if (target.textContent === 'START') startTimer(timerId, target);
+                    else stopTimer(timerId, target);
                 } else if (target.classList.contains('lap-btn')) {
                     const lapCountSpan = target.parentElement.querySelector('.lap-count');
                     let currentLaps = parseInt(lapCountSpan.textContent, 10);
-                    if (target.classList.contains('lap-plus')) {
-                        currentLaps++;
-                    } else if (target.classList.contains('lap-minus') && currentLaps > 1) {
-                        currentLaps--;
-                    }
+                    if (target.classList.contains('lap-plus')) currentLaps++;
+                    else if (target.classList.contains('lap-minus') && currentLaps > 1) currentLaps--;
                     lapCountSpan.textContent = currentLaps;
                 }
-            }
+            });
             
             function startTimer(timerId, buttonElement) {
                 const index = timerId.split('-')[1];
                 const timerType = timerId.startsWith('sw1') ? 1 : 2;
                 const timingCell = document.getElementById(`timing${timerType}-${index}`);
-                
                 timingCell.textContent = '00:00.000';
                 
                 const startTime = performance.now();
                 const intervalId = setInterval(() => {
-                    const elapsedTime = performance.now() - runningTimers[timerId].startTime;
+                    const elapsedTime = performance.now() - (runningTimers[timerId]?.startTime || 0);
                     timingCell.textContent = formatTime(elapsedTime);
-                }, 47); // Update frequently for smooth display
+                }, 47);
 
                 runningTimers[timerId] = { startTime, intervalId, timingCell };
-                
                 buttonElement.textContent = 'STOP';
                 buttonElement.classList.replace('bg-green-500', 'bg-red-500');
                 buttonElement.classList.replace('hover:bg-green-600', 'hover:bg-red-600');
@@ -258,22 +250,37 @@
             massStart1Btn.addEventListener('click', () => massStart(1));
             massStart2Btn.addEventListener('click', () => massStart(2));
             copyResultsBtn.addEventListener('click', copyResults);
-            resetAllBtn.addEventListener('click', resetAll);
+            resetAllBtn.addEventListener('click', () => {
+                // Stop all running timers
+                Object.values(runningTimers).forEach(timer => clearInterval(timer.intervalId));
+                runningTimers = {};
+
+                // Iterate over each participant row
+                tableBody.querySelectorAll('tr').forEach(row => {
+                    if (row.querySelector('.mark-checkbox')) {
+                        row.querySelector('.lap-count').textContent = '1';
+                        row.querySelectorAll('.timing-cell').forEach(cell => cell.textContent = '00:00.000');
+                        row.querySelectorAll('.sw-button').forEach(button => {
+                            button.textContent = 'START';
+                            button.classList.replace('bg-red-500', 'bg-green-500');
+                            button.classList.replace('hover:bg-red-600', 'hover:bg-green-600');
+                        });
+                    }
+                });
+            });
 
             function massStart(timerType) {
                 tableBody.querySelectorAll('tr').forEach((row, index) => {
                     const markCheckbox = row.querySelector('.mark-checkbox');
                     if (markCheckbox && markCheckbox.checked) {
                         const button = row.querySelector(`[data-timer-id="sw${timerType}-${index}"]`);
-                        if (button && button.textContent === 'START') {
-                            button.click();
-                        }
+                        if (button && button.textContent === 'START') button.click();
                     }
                 });
             }
 
             function copyResults() {
-                 if (tableBody.querySelectorAll('tr').length === 0 || tableBody.querySelector('td[colspan="8"]')) {
+                if (tableBody.querySelectorAll('tr').length === 0 || tableBody.querySelector('td[colspan="8"]')) {
                     showModal("No data to copy.");
                     return;
                 }
@@ -296,7 +303,6 @@
                     showModal("No participants are marked to be copied.");
                     return;
                 }
-
                 const textarea = document.createElement('textarea');
                 textarea.value = contentToCopy;
                 document.body.appendChild(textarea);
@@ -311,58 +317,53 @@
                 document.body.removeChild(textarea);
             }
 
-            function resetAll() {
-                // Stop all running timers before making UI changes
-                Object.values(runningTimers).forEach(timer => clearInterval(timer.intervalId));
-                runningTimers = {};
-
-                // Iterate over each participant row in the table
-                tableBody.querySelectorAll('tr').forEach(row => {
-                    // Check if it's a valid data row, not the placeholder
-                    if (row.querySelector('.mark-checkbox')) {
-                        // Reset lap counter to 1
-                        const lapCountSpan = row.querySelector('.lap-count');
-                        if (lapCountSpan) {
-                            lapCountSpan.textContent = '1';
-                        }
-
-                        // Reset both timing cells to zero
-                        const timingCells = row.querySelectorAll('.timing-cell');
-                        timingCells.forEach(cell => {
-                            cell.textContent = '00:00.000';
-                        });
-
-                        // Reset both stopwatch buttons to the 'START' state
-                        const stopwatchButtons = row.querySelectorAll('.sw-button');
-                        stopwatchButtons.forEach(button => {
-                            button.textContent = 'START';
-                            button.classList.remove('bg-red-500', 'hover:bg-red-600');
-                            button.classList.add('bg-green-500', 'hover:bg-green-600');
-                        });
-                    }
-                });
-            }
-
-            // --- 4. Custom Modal ---
-            function showModal(message) {
-                modalMessage.textContent = message;
+            // --- 4. Custom Modal and Credits ---
+            function showModal(content, isHtml = false) {
+                if (isHtml) {
+                    modalMessage.innerHTML = content;
+                } else {
+                    modalMessage.innerHTML = `<p class="text-lg text-center">${content}</p>`;
+                }
                 modal.classList.add('visible');
             }
 
-            function hideModal() {
-                modal.classList.remove('visible');
-            }
+            modalCloseBtn.addEventListener('click', () => modal.classList.remove('visible'));
+            modal.addEventListener('click', (event) => { if (event.target === modal) modal.classList.remove('visible'); });
 
-            modalCloseBtn.addEventListener('click', hideModal);
-            modal.addEventListener('click', (event) => {
-                if (event.target === modal) {
-                    hideModal();
+            creditsLink.addEventListener('click', async (event) => {
+                event.preventDefault();
+                
+                let versionHtml = '';
+                try {
+                    // Use the "raw" URL for plain text content
+                    const response = await fetch('https://raw.githubusercontent.com/zaniestp/stopwatchPE/main/ver');
+                    if (response.ok) {
+                        const versionText = await response.text();
+                        versionHtml = `<p class="text-xs text-gray-500">Version: ${versionText.trim()}</p>`;
+                    } else {
+                         console.error('Response not OK when fetching version:', response.statusText);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch version:', error);
+                    // Silently fail if there's a network error, versionHtml will be empty
                 }
-            });
 
+                const creditsContent = `
+                    <h2 class="text-xl font-bold mb-3 text-gray-900">PHS Run Stopwatch</h2>
+                    <div class="text-left text-sm space-y-2 text-gray-600">
+                        <p>This Application is written for PHS PE department to ease the recording of runners. It has the laps counter and 2 variable timings.</p>
+                        <p>The results can be exported and paste into any Spreadsheets for further analysis.</p>
+                        <p>A sample CSV file can be downloaded <a href="https://github.com/zaniestp/stopwatchPE/blob/main/sample.csv" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">here</a>.</p>
+                    </div>
+                    <div class="flex justify-between items-end mt-4">
+                        ${versionHtml}
+                        <p class="text-right text-xs text-gray-500">ZaniestP</p>
+                    </div>
+                `;
+                showModal(creditsContent, true);
+            });
         });
     </script>
 </body>
 </html>
-
 
