@@ -175,7 +175,7 @@
                     const row = tableBody.insertRow();
                     row.id = `row-${index}`;
                     // Add alternating row colors for better readability
-                    row.className = index % 2 === 0 ? 'bg-white border-b hover:bg-gray-100' : 'bg-slate-50 border-b hover:bg-gray-100';
+                    row.className = index % 2 === 0 ? 'bg-blue-50 border-b hover:bg-blue-100' : 'bg-green-50 border-b hover:bg-green-100';
                     
                     row.innerHTML = `
                         <td class="p-4 text-center"><input type="checkbox" class="mark-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked></td>
@@ -381,4 +381,5 @@
     </script>
 </body>
 </html>
+
 
