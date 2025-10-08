@@ -50,7 +50,7 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-gray-900">PHS Run Stopwatch</h1>
             <p class="text-gray-600 mt-2">Upload a CSV file of participants to begin timing.</p>
@@ -174,7 +174,8 @@
                 data.forEach((item, index) => {
                     const row = tableBody.insertRow();
                     row.id = `row-${index}`;
-                    row.className = 'bg-white border-b hover:bg-gray-50';
+                    // Add alternating row colors for better readability
+                    row.className = index % 2 === 0 ? 'bg-white border-b hover:bg-gray-100' : 'bg-slate-50 border-b hover:bg-gray-100';
                     
                     row.innerHTML = `
                         <td class="p-4 text-center"><input type="checkbox" class="mark-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked></td>
