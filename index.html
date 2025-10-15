@@ -3,16 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#3B82F6">
-    <meta name="description" content="Run Stopwatch - Timing tool for PE departments">
     <title>Run Stopwatch</title>
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    
-    <!-- Apple Touch Icon -->
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%233B82F6' width='100' height='100'/><text y='70' font-size='70' text-anchor='middle' x='50' fill='white'>⏱️</text></svg>">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -94,58 +85,13 @@
             background-color: #fdba74;
             color: #9a3412;
         }
-        .install-prompt {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            display: none;
-            align-items: center;
-            gap: 1rem;
-            z-index: 2000;
-            animation: slideUp 0.3s ease;
-        }
-        @keyframes slideUp {
-            from {
-                transform: translateX(-50%) translateY(100px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(-50%) translateY(0);
-                opacity: 1;
-            }
-        }
-        .install-prompt button {
-            background: white;
-            color: #764ba2;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .install-prompt button:hover {
-            background: #f3f4f6;
-        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <!-- PWA Install Prompt -->
-    <div id="installPrompt" class="install-prompt">
-        <span>📱 Install Run Stopwatch for offline use!</span>
-        <button id="installBtn">Install</button>
-        <button id="dismissBtn" style="background: transparent; color: white;">✕</button>
-    </div>
-
     <div class="container mx-auto p-4 md:p-8 max-w-7xl">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">⏱️ Run Stopwatch</h1>
+            <h1 class="text-4xl font-bold text-gray-900">Run Stopwatch</h1>
             <p class="text-gray-600 mt-2">Upload a CSV file of participants to begin timing.</p>
             <div class="mt-2">
                 <a href="#" id="creditsLink" class="text-sm text-blue-600 hover:underline">Credits</a>
@@ -216,43 +162,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script>
-        // PWA Service Worker Registration
-        // Only register if the service-worker.js file exists (when properly deployed)
-        if ('serviceWorker' in navigator && window.location.protocol === 'https:' && !window.location.host.includes('claudeusercontent')) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(reg => console.log('Service Worker registered'))
-                    .catch(err => console.log('Service Worker registration failed:', err));
-            });
-        }
-
-        // PWA Install Prompt
-        let deferredPrompt;
-        const installPrompt = document.getElementById('installPrompt');
-        const installBtn = document.getElementById('installBtn');
-        const dismissBtn = document.getElementById('dismissBtn');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            installPrompt.style.display = 'flex';
-        });
-
-        installBtn.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                console.log(`User response: ${outcome}`);
-                deferredPrompt = null;
-                installPrompt.style.display = 'none';
-            }
-        });
-
-        dismissBtn.addEventListener('click', () => {
-            installPrompt.style.display = 'none';
-        });
-
-        // Main Application Code
         document.addEventListener('DOMContentLoaded', () => {
             const csvFileInput = document.getElementById('csvFile');
             const tableBody = document.getElementById('tableBody');
@@ -388,6 +297,7 @@
                 const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
                 
                 const timerIdKey = `sw${stopwatchNum}-${index}`;
+                
                 const currentTime = performance.now();
                 
                 if (runningTimers[timerIdKey]) {
@@ -450,7 +360,9 @@
                 const lapNumber = row.querySelector(`.lap-number[data-sw="${timerType}"][data-index="${index}"]`);
                 
                 timingCell.textContent = '00:00.000';
+                
                 const startTime = performance.now();
+                
                 lapStartTimes[rowId][timerTypeKey] = startTime;
                 
                 const intervalId = setInterval(() => {
@@ -461,7 +373,9 @@
                 runningTimers[timerId] = { startTime, intervalId, timingCell };
                 buttonElement.textContent = 'STOP';
                 
-                if (lapBtn) lapBtn.classList.remove('hidden');
+                if (lapBtn) {
+                    lapBtn.classList.remove('hidden');
+                }
                 if (lapNumber) {
                     lapNumber.classList.remove('hidden');
                     lapNumber.textContent = '1';
@@ -501,13 +415,21 @@
                     const totalTime = formatTime(totalElapsed);
                     
                     runningTimers[timerId].timingCell.textContent = totalTime;
+                    
                     lapData[rowId][timerType].push(finalLapTime);
                     
-                    if (lapBtn) lapBtn.classList.add('hidden');
-                    if (lapNumber) lapNumber.classList.add('hidden');
-                    if (resultsBtn) resultsBtn.classList.remove('hidden');
+                    if (lapBtn) {
+                        lapBtn.classList.add('hidden');
+                    }
+                    if (lapNumber) {
+                        lapNumber.classList.add('hidden');
+                    }
+                    if (resultsBtn) {
+                        resultsBtn.classList.remove('hidden');
+                    }
                     
                     lapStartTimes[rowId][timerType] = null;
+                    
                     delete runningTimers[timerId];
                 }
                 buttonElement.textContent = 'RESTART';
@@ -535,11 +457,16 @@
                 const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
                 
                 timingCell.textContent = '00:00.000';
+                
                 lapData[rowId][timerType] = [];
                 lapStartTimes[rowId][timerType] = null;
                 
-                if (resultsBtn) resultsBtn.classList.add('hidden');
-                if (lapBtn) lapBtn.classList.add('hidden');
+                if (resultsBtn) {
+                    resultsBtn.classList.add('hidden');
+                }
+                if (lapBtn) {
+                    lapBtn.classList.add('hidden');
+                }
                 if (lapNumber) {
                     lapNumber.classList.add('hidden');
                     lapNumber.textContent = '1';
@@ -568,6 +495,16 @@
                     const markCheckbox = row.querySelector('.mark-checkbox');
                     if (markCheckbox) {
                         markCheckbox.checked = true;
+                        row.querySelectorAll('.timing-cell').forEach(cell => cell.textContent = '00:00.000');
+                        row.querySelectorAll('.sw-button').forEach(button => {
+                            button.textContent = 'START';
+                            button.classList.remove('bg-red-500', 'hover:bg-red-600');
+                            if (button.dataset.timerId.startsWith('sw1')) {
+                                button.classList.add('sw1-bg');
+                            } else {
+                                button.classList.add('sw2-bg');
+                            }
+                        });
                         row.querySelectorAll('.lap-btn, .results-btn, .lap-number').forEach(btn => btn.classList.add('hidden'));
                         row.querySelectorAll('.lap-number').forEach(num => num.textContent = '1');
                         const sw1Radio = row.querySelector('.sw-radio[data-sw="1"]');
@@ -831,12 +768,11 @@
                 }
 
                 const creditsContent = `
-                    <h2 class="text-xl font-bold mb-3 text-gray-900">Run Stopwatch PWA</h2>
+                    <h2 class="text-xl font-bold mb-3 text-gray-900">Run Stopwatch</h2>
                     <div class="text-left text-sm space-y-2 text-gray-600">
                         <p>This Application is written for PHS PE department to ease the recording of runners. It has the lap counters and 2 variable timings.</p>
                         <p>The results can be exported and pasted into any Spreadsheets for further analysis. They are in CSV format.</p>
                         <p>A sample CSV file can be downloaded <a href="https://github.com/zaniestp/stopwatchPE/blob/main/sample.csv" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">here</a>.</p>
-                        <p class="text-purple-600 font-semibold">✨ PWA Features: Install on your device for offline use!</p>
                     </div>
                     <div class="flex justify-between items-end mt-4">
                         ${versionHtml}
@@ -848,14 +784,4 @@
         });
     </script>
 </body>
-</html>electorAll('.timing-cell').forEach(cell => cell.textContent = '00:00.000');
-                        row.querySelectorAll('.sw-button').forEach(button => {
-                            button.textContent = 'START';
-                            button.classList.remove('bg-red-500', 'hover:bg-red-600');
-                            if (button.dataset.timerId.startsWith('sw1')) {
-                                button.classList.add('sw1-bg');
-                            } else {
-                                button.classList.add('sw2-bg');
-                            }
-                        });
-                        row.queryS
+</html>
