@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHS Run Stopwatch</title>
+    <title>Run Stopwatch</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Custom modal styles */
         .modal-backdrop {
             position: fixed;
             top: 0;
@@ -64,27 +63,27 @@
             line-height: 1.5rem;
         }
         .sw1-text {
-            color: #059669; /* Green-600 */
+            color: #059669;
             font-weight: 700;
         }
         .sw2-text {
-            color: #f97316; /* Orange-500 */
+            color: #f97316;
             font-weight: 700;
         }
         .sw1-bg {
-            background-color: #059669; /* Green-600 */
+            background-color: #059669;
         }
         .sw1-bg:hover {
-            background-color: #047857; /* Green-700 */
+            background-color: #047857;
         }
         .sw2-bg {
-            background-color: #fed7aa; /* Orange-200 */
-            color: #c2410c; /* Orange-700 for text */
+            background-color: #fed7aa;
+            color: #c2410c;
             font-weight: 700;
         }
         .sw2-bg:hover {
-            background-color: #fdba74; /* Orange-300 */
-            color: #9a3412; /* Orange-800 for text on hover */
+            background-color: #fdba74;
+            color: #9a3412;
         }
     </style>
 </head>
@@ -92,7 +91,7 @@
 
     <div class="container mx-auto p-4 md:p-8 max-w-7xl">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">PHS Run Stopwatch</h1>
+            <h1 class="text-4xl font-bold text-gray-900">Run Stopwatch</h1>
             <p class="text-gray-600 mt-2">Upload a CSV file of participants to begin timing.</p>
             <div class="mt-2">
                 <a href="#" id="creditsLink" class="text-sm text-blue-600 hover:underline">Credits</a>
@@ -100,7 +99,7 @@
         </header>
 
         <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-8">
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 items-center">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-center">
                 <div class="sm:col-span-2 md:col-span-1">
                     <label for="csvFile" class="block text-sm font-medium text-gray-700 mb-1">1. Upload CSV</label>
                     <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
@@ -146,7 +145,6 @@
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                   <!-- Placeholder content -->
                    <tr class="text-center text-gray-400">
                        <td colspan="8" class="px-6 py-12">Upload a CSV file to see participant data.</td>
                    </tr>
@@ -155,7 +153,6 @@
         </div>
     </div>
 
-    <!-- Custom Modal -->
     <div id="customModal" class="modal-backdrop">
         <div class="modal-content text-center">
             <div id="modalMessage" class="mb-4"></div>
@@ -163,9 +160,9 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // DOM element references
             const csvFileInput = document.getElementById('csvFile');
             const tableBody = document.getElementById('tableBody');
             const massStartBtn = document.getElementById('massStart');
@@ -181,13 +178,11 @@
             const selectAllSW1 = document.getElementById('selectAllSW1');
             const selectAllSW2 = document.getElementById('selectAllSW2');
             
-            // State variables
             let runningTimers = {};
-            let lapData = {}; // Stores lap times for each row: { 'row-0': { sw1: [], sw2: [] } }
-            let lapStartTimes = {}; // Stores when each lap started: { 'row-0': { sw1: timestamp, sw2: timestamp } }
+            let lapData = {};
+            let lapStartTimes = {};
             let isShowingAll = true;
 
-            // --- 1. File Upload and Table Generation ---
             csvFileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
@@ -226,14 +221,13 @@
 
             function populateTable(data) {
                 tableBody.innerHTML = '';
-                lapData = {}; // Reset lap data
-                lapStartTimes = {}; // Reset lap start times
+                lapData = {};
+                lapStartTimes = {};
                 data.forEach((item, index) => {
                     const row = tableBody.insertRow();
                     row.id = `row-${index}`;
                     row.className = index % 2 === 0 ? 'bg-blue-50 border-b hover:bg-blue-100' : 'bg-green-50 border-b hover:bg-green-100';
                     
-                    // Initialize lap data for this row
                     lapData[row.id] = { sw1: [], sw2: [] };
                     lapStartTimes[row.id] = { sw1: null, sw2: null };
                     
@@ -263,13 +257,11 @@
                         </td>
                     `;
                 });
-                 // Reset view state for new list
                 isShowingAll = true;
                 updateToggleViewButton();
                 toggleCheckboxVisibility();
             }
 
-            // --- 2. Timer, Lap, and Visibility Logic ---
             tableBody.addEventListener('click', (event) => {
                 const target = event.target;
                 if (target.classList.contains('sw-button')) {
@@ -291,53 +283,11 @@
 
             tableBody.addEventListener('change', (event) => {
                 if(event.target.classList.contains('mark-checkbox')) {
-                    // If we are in "hide" mode, an uncheck should hide the row immediately.
                     if(!isShowingAll) {
                         applyRowVisibility();
                     }
                 }
             });
-
-            function handleStopwatchToggle(button) {
-                const row = button.closest('tr');
-                const sw1Cells = row.querySelectorAll('.sw1-cell');
-                const sw2Cells = row.querySelectorAll('.sw2-cell');
-                const sw1Headers = document.querySelectorAll('.sw1-header');
-                const sw2Headers = document.querySelectorAll('.sw2-header');
-                
-                // Check if currently showing SW1
-                const isShowingSW1Local = !sw1Cells[0].classList.contains('hidden');
-                
-                if (isShowingSW1Local) {
-                    // Switch to SW2
-                    sw1Cells.forEach(cell => cell.classList.add('hidden'));
-                    sw2Cells.forEach(cell => cell.classList.remove('hidden'));
-                    sw1Headers.forEach(header => header.classList.add('hidden'));
-                    sw2Headers.forEach(header => header.classList.remove('hidden'));
-                    button.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">1</span>';
-                    button.classList.replace('bg-orange-500', 'bg-teal-500');
-                    button.classList.replace('hover:bg-orange-600', 'hover:bg-teal-600');
-                    // Update global toggle button
-                    toggleAllStopwatchesBtn.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">1</span>';
-                    toggleAllStopwatchesBtn.classList.replace('bg-orange-500', 'bg-teal-500');
-                    toggleAllStopwatchesBtn.classList.replace('hover:bg-orange-600', 'hover:bg-teal-600');
-                    isShowingSW1 = false;
-                } else {
-                    // Switch to SW1
-                    sw2Cells.forEach(cell => cell.classList.add('hidden'));
-                    sw1Cells.forEach(cell => cell.classList.remove('hidden'));
-                    sw2Headers.forEach(header => header.classList.add('hidden'));
-                    sw1Headers.forEach(header => header.classList.remove('hidden'));
-                    button.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">2</span>';
-                    button.classList.replace('bg-teal-500', 'bg-orange-500');
-                    button.classList.replace('hover:bg-teal-600', 'hover:bg-orange-600');
-                    // Update global toggle button
-                    toggleAllStopwatchesBtn.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">2</span>';
-                    toggleAllStopwatchesBtn.classList.replace('bg-teal-500', 'bg-orange-500');
-                    toggleAllStopwatchesBtn.classList.replace('hover:bg-teal-600', 'hover:bg-orange-600');
-                    isShowingSW1 = true;
-                }
-            }
 
             function handleLapIncrement(button) {
                 const row = button.closest('tr');
@@ -346,22 +296,18 @@
                 const stopwatchNum = button.dataset.sw;
                 const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
                 
-                // Get current time from the specific stopwatch
                 const timerIdKey = `sw${stopwatchNum}-${index}`;
                 
                 const currentTime = performance.now();
                 
-                // Record lap time for the specific stopwatch if it's running
                 if (runningTimers[timerIdKey]) {
                     const timerType = `sw${stopwatchNum}`;
                     const lapStartTime = lapStartTimes[rowId][timerType] || runningTimers[timerIdKey].startTime;
                     const lapElapsed = currentTime - lapStartTime;
                     const lapTime = formatTime(lapElapsed);
                     lapData[rowId][timerType].push(lapTime);
-                    // Set new lap start time
                     lapStartTimes[rowId][timerType] = currentTime;
                     
-                    // Increment lap number display
                     if (lapNumber) {
                         const currentLap = parseInt(lapNumber.textContent, 10);
                         lapNumber.textContent = currentLap + 1;
@@ -377,7 +323,6 @@
                 const name = row.cells[1].textContent;
                 const laps = lapData[rowId];
                 
-                // Get total time from the specific timing cell
                 const timingCell = document.getElementById(`timing${stopwatchNum}-${index}`);
                 const totalTime = timingCell.textContent;
                 
@@ -392,7 +337,6 @@
                         lapContent += `<li class="timing-cell">Lap ${idx + 1}: ${time}</li>`;
                     });
                     
-                    // Show total time
                     if (totalTime !== '00:00.000') {
                         lapContent += `<li class="timing-cell font-bold mt-2">Total: ${totalTime}</li>`;
                     }
@@ -419,7 +363,6 @@
                 
                 const startTime = performance.now();
                 
-                // Set lap start time to the timer start time
                 lapStartTimes[rowId][timerTypeKey] = startTime;
                 
                 const intervalId = setInterval(() => {
@@ -430,7 +373,6 @@
                 runningTimers[timerId] = { startTime, intervalId, timingCell };
                 buttonElement.textContent = 'STOP';
                 
-                // Show lap button and lap number when running
                 if (lapBtn) {
                     lapBtn.classList.remove('hidden');
                 }
@@ -439,7 +381,6 @@
                     lapNumber.textContent = '1';
                 }
                 
-                // Change to red when running
                 if (timerType === 1) {
                     buttonElement.classList.remove('sw1-bg');
                     buttonElement.classList.add('bg-red-500', 'hover:bg-red-600');
@@ -465,23 +406,18 @@
                     const resultsBtn = row.querySelector(`.results-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
                     const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
                     
-                    // Calculate final lap time (time since last lap or start)
                     const currentTime = performance.now();
                     const lapStartTime = lapStartTimes[rowId][timerType] || runningTimers[timerId].startTime;
                     const finalLapElapsed = currentTime - lapStartTime;
                     const finalLapTime = formatTime(finalLapElapsed);
                     
-                    // Calculate total time (from original start)
                     const totalElapsed = currentTime - runningTimers[timerId].startTime;
                     const totalTime = formatTime(totalElapsed);
                     
-                    // Display total time in the timing cell
                     runningTimers[timerId].timingCell.textContent = totalTime;
                     
-                    // Add final lap time to lap data
                     lapData[rowId][timerType].push(finalLapTime);
                     
-                    // Hide lap button and lap number, show results button
                     if (lapBtn) {
                         lapBtn.classList.add('hidden');
                     }
@@ -492,14 +428,12 @@
                         resultsBtn.classList.remove('hidden');
                     }
                     
-                    // Reset lap start time
                     lapStartTimes[rowId][timerType] = null;
                     
                     delete runningTimers[timerId];
                 }
                 buttonElement.textContent = 'RESTART';
                 
-                // Restore original color
                 buttonElement.classList.remove('bg-red-500', 'hover:bg-red-600');
                 if (timerId.startsWith('sw1')) {
                     buttonElement.classList.add('sw1-bg');
@@ -522,14 +456,11 @@
                 const resultsBtn = row.querySelector(`.results-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
                 const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
                 
-                // Reset timing display
                 timingCell.textContent = '00:00.000';
                 
-                // Clear lap data
                 lapData[rowId][timerType] = [];
                 lapStartTimes[rowId][timerType] = null;
                 
-                // Hide results button, lap button, and lap number
                 if (resultsBtn) {
                     resultsBtn.classList.add('hidden');
                 }
@@ -541,7 +472,6 @@
                     lapNumber.textContent = '1';
                 }
                 
-                // Reset button to START
                 buttonElement.textContent = 'START';
             }
 
@@ -553,7 +483,6 @@
                 return `${minutes}:${seconds}.${ms}`;
             }
 
-            // --- 3. Control Panel Logic ---
             massStartBtn.addEventListener('click', massStart);
             exportResultsBtn.addEventListener('click', showExportOptions);
 
@@ -576,14 +505,10 @@
                                 button.classList.add('sw2-bg');
                             }
                         });
-                        // Hide L, R buttons and lap numbers
                         row.querySelectorAll('.lap-btn, .results-btn, .lap-number').forEach(btn => btn.classList.add('hidden'));
-                        // Reset lap numbers to 1
                         row.querySelectorAll('.lap-number').forEach(num => num.textContent = '1');
-                        // Reset radio buttons - select SW1 by default
                         const sw1Radio = row.querySelector('.sw-radio[data-sw="1"]');
                         if (sw1Radio) sw1Radio.checked = true;
-                        // Reset lap data for this row
                         lapData[row.id] = { sw1: [], sw2: [] };
                         lapStartTimes[row.id] = { sw1: null, sw2: null };
                     }
@@ -612,7 +537,6 @@
                 toggleCheckboxVisibility();
             });
 
-            // Header radio button listeners
             selectAllSW1.addEventListener('change', () => {
                 if (selectAllSW1.checked) {
                     tableBody.querySelectorAll('tr').forEach(row => {
@@ -631,69 +555,6 @@
                 }
             });
 
-            function toggleCheckboxVisibility() {
-                if (isShowingAll) {
-                    // Show checkbox column when showing all
-                    mainTable.classList.remove('checkbox-column-hidden');
-                } else {
-                    // Hide checkbox column when hiding unmarked
-                    mainTable.classList.add('checkbox-column-hidden');
-                }
-            }
-
-            toggleAllStopwatchesBtn.addEventListener('click', () => {
-                toggleAllStopwatches();
-            });
-
-            function toggleAllStopwatches() {
-                const sw1Headers = document.querySelectorAll('.sw1-header');
-                const sw2Headers = document.querySelectorAll('.sw2-header');
-                
-                // Toggle all rows
-                tableBody.querySelectorAll('tr').forEach(row => {
-                    const sw1Cells = row.querySelectorAll('.sw1-cell');
-                    const sw2Cells = row.querySelectorAll('.sw2-cell');
-                    const toggleBtn = row.querySelector('.toggle-sw-btn');
-                    
-                    if (isShowingSW1) {
-                        // Switch to SW2
-                        sw1Cells.forEach(cell => cell.classList.add('hidden'));
-                        sw2Cells.forEach(cell => cell.classList.remove('hidden'));
-                        if (toggleBtn) {
-                            toggleBtn.textContent = '🕒1';
-                            toggleBtn.classList.replace('bg-orange-500', 'bg-teal-500');
-                            toggleBtn.classList.replace('hover:bg-orange-600', 'hover:bg-teal-600');
-                        }
-                    } else {
-                        // Switch to SW1
-                        sw2Cells.forEach(cell => cell.classList.add('hidden'));
-                        sw1Cells.forEach(cell => cell.classList.remove('hidden'));
-                        if (toggleBtn) {
-                            toggleBtn.textContent = '🕒2';
-                            toggleBtn.classList.replace('bg-teal-500', 'bg-orange-500');
-                            toggleBtn.classList.replace('hover:bg-teal-600', 'hover:bg-orange-600');
-                        }
-                    }
-                });
-                
-                // Toggle headers
-                if (isShowingSW1) {
-                    sw1Headers.forEach(header => header.classList.add('hidden'));
-                    sw2Headers.forEach(header => header.classList.remove('hidden'));
-                    toggleAllStopwatchesBtn.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">1</span>';
-                    toggleAllStopwatchesBtn.classList.replace('bg-orange-500', 'bg-teal-500');
-                    toggleAllStopwatchesBtn.classList.replace('hover:bg-orange-600', 'hover:bg-teal-600');
-                } else {
-                    sw2Headers.forEach(header => header.classList.add('hidden'));
-                    sw1Headers.forEach(header => header.classList.remove('hidden'));
-                    toggleAllStopwatchesBtn.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">2</span>';
-                    toggleAllStopwatchesBtn.classList.replace('bg-teal-500', 'bg-orange-500');
-                    toggleAllStopwatchesBtn.classList.replace('hover:bg-teal-600', 'hover:bg-orange-600');
-                }
-                
-                isShowingSW1 = !isShowingSW1;
-            }
-
             function applyRowVisibility() {
                 tableBody.querySelectorAll('tr').forEach(row => {
                     if (isShowingAll) {
@@ -708,7 +569,7 @@
                     }
                 });
             }
-            
+             
             function updateToggleViewButton() {
                 toggleViewBtn.textContent = isShowingAll ? 'Hide Unmarked' : 'Show All';
                 toggleViewBtn.classList.toggle('bg-yellow-500', isShowingAll);
@@ -717,22 +578,27 @@
                 toggleViewBtn.classList.toggle('hover:bg-indigo-600', !isShowingAll);
             }
 
+            function toggleCheckboxVisibility() {
+                if (isShowingAll) {
+                    mainTable.classList.remove('checkbox-column-hidden');
+                } else {
+                    mainTable.classList.add('checkbox-column-hidden');
+                }
+            }
+
             function massStart() {
                 tableBody.querySelectorAll('tr').forEach((row) => {
                     const markCheckbox = row.querySelector('.mark-checkbox');
                     if (markCheckbox && markCheckbox.checked) {
-                        // Check which stopwatch is selected via radio button
                         const sw1Radio = row.querySelector('.sw-radio[data-sw="1"]');
                         const sw2Radio = row.querySelector('.sw-radio[data-sw="2"]');
                         
                         if (sw1Radio && sw1Radio.checked) {
-                            // Start SW1
                             const sw1Button = row.querySelector('[data-timer-id^="sw1"]');
                             if (sw1Button && sw1Button.textContent.trim() === 'START') {
                                 sw1Button.click();
                             }
                         } else if (sw2Radio && sw2Radio.checked) {
-                            // Start SW2
                             const sw2Button = row.querySelector('[data-timer-id^="sw2"]');
                             if (sw2Button && sw2Button.textContent.trim() === 'START') {
                                 sw2Button.click();
@@ -762,7 +628,6 @@
                 `;
                 showModal(exportContent, true);
                 
-                // Add event listeners after modal is shown
                 setTimeout(() => {
                     document.getElementById('exportSummary')?.addEventListener('click', exportSummary);
                     document.getElementById('exportDetailed')?.addEventListener('click', exportDetailed);
@@ -778,8 +643,8 @@
                     if (markCheckbox && markCheckbox.checked) {
                         const name = row.cells[1].textContent;
                         const studentClass = row.cells[2].textContent;
-                        const timing1 = row.querySelector('.timing-cell.sw1-cell').textContent;
-                        const timing2 = row.querySelector('.timing-cell.sw2-cell').textContent;
+                        const timing1 = row.querySelector('.timing-cell.sw1-text').textContent;
+                        const timing2 = row.querySelector('.timing-cell.sw2-text').textContent;
                         
                         csvContent += `"${name}","${studentClass}","${timing1}","${timing2}"\n`;
                         exportedCount++;
@@ -806,10 +671,9 @@
                         const name = row.cells[1].textContent;
                         const studentClass = row.cells[2].textContent;
                         const rowId = row.id;
-                        const timing1 = row.querySelector('.timing-cell.sw1-cell').textContent;
-                        const timing2 = row.querySelector('.timing-cell.sw2-cell').textContent;
+                        const timing1 = row.querySelector('.timing-cell.sw1-text').textContent;
+                        const timing2 = row.querySelector('.timing-cell.sw2-text').textContent;
                         
-                        // Export Stopwatch 1 laps
                         if (lapData[rowId].sw1.length > 0) {
                             lapData[rowId].sw1.forEach((lapTime, idx) => {
                                 const lapNum = idx + 1;
@@ -818,12 +682,10 @@
                             });
                             exportedCount++;
                         } else if (timing1 !== '00:00.000') {
-                            // If stopwatch 1 was used but no laps recorded
                             csvContent += `"${name}","${studentClass}","🕒1","1","${timing1}","${timing1}"\n`;
                             exportedCount++;
                         }
                         
-                        // Export Stopwatch 2 laps
                         if (lapData[rowId].sw2.length > 0) {
                             lapData[rowId].sw2.forEach((lapTime, idx) => {
                                 const lapNum = idx + 1;
@@ -832,7 +694,6 @@
                             });
                             exportedCount++;
                         } else if (timing2 !== '00:00.000') {
-                            // If stopwatch 2 was used but no laps recorded
                             csvContent += `"${name}","${studentClass}","🕒2","1","${timing2}","${timing2}"\n`;
                             exportedCount++;
                         }
@@ -862,7 +723,6 @@
                 document.body.removeChild(link);
             }
 
-            // --- 4. Custom Modal and Credits ---
             function showModal(content, isHtml = false) {
                 if (isHtml) {
                     modalMessage.innerHTML = content;
@@ -871,7 +731,6 @@
                 }
                 modal.classList.add('visible');
                 
-                // Re-attach close button listener to handle dynamically added content
                 setTimeout(() => {
                     const closeBtn = document.getElementById('modalCloseBtn');
                     if (closeBtn) {
@@ -909,7 +768,7 @@
                 }
 
                 const creditsContent = `
-                    <h2 class="text-xl font-bold mb-3 text-gray-900">PHS Run Stopwatch</h2>
+                    <h2 class="text-xl font-bold mb-3 text-gray-900">Run Stopwatch</h2>
                     <div class="text-left text-sm space-y-2 text-gray-600">
                         <p>This Application is written for PHS PE department to ease the recording of runners. It has the laps counter and 2 variable timings.</p>
                         <p>The results can be exported and paste into any Spreadsheets for further analysis.</p>
