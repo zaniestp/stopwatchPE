@@ -39,12 +39,52 @@
             transition: transform 0.3s ease;
             width: 90%;
             max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
         }
         .modal-backdrop.visible .modal-content {
             transform: scale(1);
         }
         .timing-cell {
             font-family: 'Courier New', Courier, monospace;
+            font-weight: 700;
+        }
+        .checkbox-column-hidden .checkbox-header,
+        .checkbox-column-hidden .checkbox-cell {
+            display: none;
+        }
+        .clock-emoji {
+            font-size: 1.5rem;
+            vertical-align: middle;
+            line-height: 1;
+        }
+        .clock-text {
+            vertical-align: middle;
+            display: inline-block;
+            line-height: 1.5rem;
+        }
+        .sw1-text {
+            color: #059669; /* Green-600 */
+            font-weight: 700;
+        }
+        .sw2-text {
+            color: #f97316; /* Orange-500 */
+            font-weight: 700;
+        }
+        .sw1-bg {
+            background-color: #059669; /* Green-600 */
+        }
+        .sw1-bg:hover {
+            background-color: #047857; /* Green-700 */
+        }
+        .sw2-bg {
+            background-color: #fed7aa; /* Orange-200 */
+            color: #c2410c; /* Orange-700 for text */
+            font-weight: 700;
+        }
+        .sw2-bg:hover {
+            background-color: #fdba74; /* Orange-300 */
+            color: #9a3412; /* Orange-800 for text on hover */
         }
     </style>
 </head>
@@ -66,13 +106,10 @@
                     <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
                 </div>
                 <div class="flex-grow">
-                    <button id="massStart1" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Mass Start 1</button>
+                    <button id="massStart" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Mass Start</button>
                 </div>
                 <div class="flex-grow">
-                    <button id="massStart2" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Mass Start 2</button>
-                </div>
-                <div class="flex-grow">
-                     <button id="copyResults" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Copy Results</button>
+                     <button id="exportResults" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Export</button>
                 </div>
                  <div class="flex-grow">
                     <button id="toggleViewBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow">Hide Unmarked</button>
@@ -84,19 +121,28 @@
         </div>
 
         <div class="overflow-x-auto bg-white rounded-xl shadow-lg">
-            <table class="w-full text-sm text-left text-gray-500">
+            <table id="mainTable" class="w-full text-sm text-left text-gray-500">
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
-                        <th scope="col" class="p-4 text-center">
+                        <th scope="col" class="p-4 text-center checkbox-header">
                             <input type="checkbox" id="masterMarkCheckbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" title="Invert All Selections">
                         </th>
                         <th scope="col" class="px-6 py-3">Name</th>
                         <th scope="col" class="px-6 py-3">Class</th>
-                        <th scope="col" class="px-6 py-3 text-center">Laps</th>
-                        <th scope="col" class="px-6 py-3 text-center">Stopwatch 1</th>
-                        <th scope="col" class="px-6 py-3 text-center">Timing 1</th>
-                        <th scope="col" class="px-6 py-3 text-center">Stopwatch 2</th>
-                        <th scope="col" class="px-6 py-3 text-center">Timing 2</th>
+                        <th scope="col" class="px-6 py-3 text-center sw1-text">Timing 1</th>
+                        <th scope="col" class="px-6 py-3 text-center sw1-text">
+                            <div class="flex items-center justify-center space-x-2">
+                                <input type="radio" id="selectAllSW1" name="selectAllSW" class="h-4 w-4 text-green-600 focus:ring-green-500" title="Select All Stopwatch 1">
+                                <span><span class="clock-emoji">🕒</span><span class="clock-text">1</span></span>
+                            </div>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center sw2-text">Timing 2</th>
+                        <th scope="col" class="px-6 py-3 text-center sw2-text">
+                            <div class="flex items-center justify-center space-x-2">
+                                <input type="radio" id="selectAllSW2" name="selectAllSW" class="h-4 w-4 text-orange-600 focus:ring-orange-500" title="Select All Stopwatch 2">
+                                <span><span class="clock-emoji">🕒</span><span class="clock-text">2</span></span>
+                            </div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -122,9 +168,8 @@
             // DOM element references
             const csvFileInput = document.getElementById('csvFile');
             const tableBody = document.getElementById('tableBody');
-            const massStart1Btn = document.getElementById('massStart1');
-            const massStart2Btn = document.getElementById('massStart2');
-            const copyResultsBtn = document.getElementById('copyResults');
+            const massStartBtn = document.getElementById('massStart');
+            const exportResultsBtn = document.getElementById('exportResults');
             const resetAllBtn = document.getElementById('resetAll');
             const creditsLink = document.getElementById('creditsLink');
             const modal = document.getElementById('customModal');
@@ -132,9 +177,14 @@
             const modalCloseBtn = document.getElementById('modalCloseBtn');
             const masterMarkCheckbox = document.getElementById('masterMarkCheckbox');
             const toggleViewBtn = document.getElementById('toggleViewBtn');
+            const mainTable = document.getElementById('mainTable');
+            const selectAllSW1 = document.getElementById('selectAllSW1');
+            const selectAllSW2 = document.getElementById('selectAllSW2');
             
             // State variables
             let runningTimers = {};
+            let lapData = {}; // Stores lap times for each row: { 'row-0': { sw1: [], sw2: [] } }
+            let lapStartTimes = {}; // Stores when each lap started: { 'row-0': { sw1: timestamp, sw2: timestamp } }
             let isShowingAll = true;
 
             // --- 1. File Upload and Table Generation ---
@@ -176,31 +226,47 @@
 
             function populateTable(data) {
                 tableBody.innerHTML = '';
+                lapData = {}; // Reset lap data
+                lapStartTimes = {}; // Reset lap start times
                 data.forEach((item, index) => {
                     const row = tableBody.insertRow();
                     row.id = `row-${index}`;
                     row.className = index % 2 === 0 ? 'bg-blue-50 border-b hover:bg-blue-100' : 'bg-green-50 border-b hover:bg-green-100';
                     
+                    // Initialize lap data for this row
+                    lapData[row.id] = { sw1: [], sw2: [] };
+                    lapStartTimes[row.id] = { sw1: null, sw2: null };
+                    
                     row.innerHTML = `
-                        <td class="p-4 text-center"><input type="checkbox" class="mark-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked></td>
+                        <td class="p-4 text-center checkbox-cell"><input type="checkbox" class="mark-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked></td>
                         <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${item.name}</td>
                         <td class="px-6 py-4">${item.class}</td>
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 text-center text-base font-semibold timing-cell sw1-text" id="timing1-${index}">00:00.000</td>
+                        <td class="px-6 py-4 text-center">
                             <div class="flex items-center justify-center space-x-2">
-                                <button class="lap-btn lap-minus bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold w-6 h-6 rounded-full flex items-center justify-center">-</button>
-                                <span class="lap-count font-semibold text-lg w-6 text-center">1</span>
-                                <button class="lap-btn lap-plus bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold w-6 h-6 rounded-full flex items-center justify-center">+</button>
+                                <input type="radio" name="sw-select-${index}" class="sw-radio h-4 w-4 text-green-600 focus:ring-green-500" data-sw="1" data-index="${index}" checked>
+                                <span class="lap-number font-semibold text-lg sw1-text hidden" data-sw="1" data-index="${index}">1</span>
+                                <button class="w-20 sw-button sw1-bg text-white font-bold py-1 px-3 rounded-lg text-xs" data-timer-id="sw1-${index}" data-sw="1">START</button>
+                                <button class="lap-btn bg-blue-500 hover:bg-blue-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center text-xs hidden" data-sw="1" data-index="${index}">L</button>
+                                <button class="results-btn bg-purple-500 hover:bg-purple-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center text-xs hidden" data-sw="1" data-index="${index}">R</button>
                             </div>
                         </td>
-                        <td class="px-6 py-4 text-center"><button class="w-20 sw-button bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-xs" data-timer-id="sw1-${index}">START</button></td>
-                        <td class="px-6 py-4 text-center text-base font-semibold timing-cell" id="timing1-${index}">00:00.000</td>
-                        <td class="px-6 py-4 text-center"><button class="w-20 sw-button bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-xs" data-timer-id="sw2-${index}">START</button></td>
-                        <td class="px-6 py-4 text-center text-base font-semibold timing-cell" id="timing2-${index}">00:00.000</td>
+                        <td class="px-6 py-4 text-center text-base font-semibold timing-cell sw2-text" id="timing2-${index}">00:00.000</td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center space-x-2">
+                                <input type="radio" name="sw-select-${index}" class="sw-radio h-4 w-4 text-orange-600 focus:ring-orange-500" data-sw="2" data-index="${index}">
+                                <span class="lap-number font-semibold text-lg sw2-text hidden" data-sw="2" data-index="${index}">1</span>
+                                <button class="w-20 sw-button sw2-bg py-1 px-3 rounded-lg text-xs" data-timer-id="sw2-${index}" data-sw="2" style="font-weight: 900; color: #000;">START</button>
+                                <button class="lap-btn bg-blue-500 hover:bg-blue-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center text-xs hidden" data-sw="2" data-index="${index}">L</button>
+                                <button class="results-btn bg-purple-500 hover:bg-purple-600 text-white font-bold w-6 h-6 rounded-full flex items-center justify-center text-xs hidden" data-sw="2" data-index="${index}">R</button>
+                            </div>
+                        </td>
                     `;
                 });
                  // Reset view state for new list
                 isShowingAll = true;
                 updateToggleViewButton();
+                toggleCheckboxVisibility();
             }
 
             // --- 2. Timer, Lap, and Visibility Logic ---
@@ -208,14 +274,18 @@
                 const target = event.target;
                 if (target.classList.contains('sw-button')) {
                     const timerId = target.dataset.timerId;
-                    if (target.textContent === 'START') startTimer(timerId, target);
-                    else stopTimer(timerId, target);
+                    const buttonText = target.textContent.trim();
+                    if (buttonText === 'START') {
+                        startTimer(timerId, target);
+                    } else if (buttonText === 'STOP') {
+                        stopTimer(timerId, target);
+                    } else if (buttonText === 'RESTART') {
+                        restartTimer(timerId, target);
+                    }
                 } else if (target.classList.contains('lap-btn')) {
-                    const lapCountSpan = target.parentElement.querySelector('.lap-count');
-                    let currentLaps = parseInt(lapCountSpan.textContent, 10);
-                    if (target.classList.contains('lap-plus')) currentLaps++;
-                    else if (target.classList.contains('lap-minus') && currentLaps > 1) currentLaps--;
-                    lapCountSpan.textContent = currentLaps;
+                    handleLapIncrement(target);
+                } else if (target.classList.contains('results-btn')) {
+                    handleResultsView(target);
                 }
             });
 
@@ -227,14 +297,131 @@
                     }
                 }
             });
+
+            function handleStopwatchToggle(button) {
+                const row = button.closest('tr');
+                const sw1Cells = row.querySelectorAll('.sw1-cell');
+                const sw2Cells = row.querySelectorAll('.sw2-cell');
+                const sw1Headers = document.querySelectorAll('.sw1-header');
+                const sw2Headers = document.querySelectorAll('.sw2-header');
+                
+                // Check if currently showing SW1
+                const isShowingSW1Local = !sw1Cells[0].classList.contains('hidden');
+                
+                if (isShowingSW1Local) {
+                    // Switch to SW2
+                    sw1Cells.forEach(cell => cell.classList.add('hidden'));
+                    sw2Cells.forEach(cell => cell.classList.remove('hidden'));
+                    sw1Headers.forEach(header => header.classList.add('hidden'));
+                    sw2Headers.forEach(header => header.classList.remove('hidden'));
+                    button.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">1</span>';
+                    button.classList.replace('bg-orange-500', 'bg-teal-500');
+                    button.classList.replace('hover:bg-orange-600', 'hover:bg-teal-600');
+                    // Update global toggle button
+                    toggleAllStopwatchesBtn.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">1</span>';
+                    toggleAllStopwatchesBtn.classList.replace('bg-orange-500', 'bg-teal-500');
+                    toggleAllStopwatchesBtn.classList.replace('hover:bg-orange-600', 'hover:bg-teal-600');
+                    isShowingSW1 = false;
+                } else {
+                    // Switch to SW1
+                    sw2Cells.forEach(cell => cell.classList.add('hidden'));
+                    sw1Cells.forEach(cell => cell.classList.remove('hidden'));
+                    sw2Headers.forEach(header => header.classList.add('hidden'));
+                    sw1Headers.forEach(header => header.classList.remove('hidden'));
+                    button.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">2</span>';
+                    button.classList.replace('bg-teal-500', 'bg-orange-500');
+                    button.classList.replace('hover:bg-teal-600', 'hover:bg-orange-600');
+                    // Update global toggle button
+                    toggleAllStopwatchesBtn.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">2</span>';
+                    toggleAllStopwatchesBtn.classList.replace('bg-teal-500', 'bg-orange-500');
+                    toggleAllStopwatchesBtn.classList.replace('hover:bg-teal-600', 'hover:bg-orange-600');
+                    isShowingSW1 = true;
+                }
+            }
+
+            function handleLapIncrement(button) {
+                const row = button.closest('tr');
+                const rowId = row.id;
+                const index = button.dataset.index;
+                const stopwatchNum = button.dataset.sw;
+                const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                
+                // Get current time from the specific stopwatch
+                const timerIdKey = `sw${stopwatchNum}-${index}`;
+                
+                const currentTime = performance.now();
+                
+                // Record lap time for the specific stopwatch if it's running
+                if (runningTimers[timerIdKey]) {
+                    const timerType = `sw${stopwatchNum}`;
+                    const lapStartTime = lapStartTimes[rowId][timerType] || runningTimers[timerIdKey].startTime;
+                    const lapElapsed = currentTime - lapStartTime;
+                    const lapTime = formatTime(lapElapsed);
+                    lapData[rowId][timerType].push(lapTime);
+                    // Set new lap start time
+                    lapStartTimes[rowId][timerType] = currentTime;
+                    
+                    // Increment lap number display
+                    if (lapNumber) {
+                        const currentLap = parseInt(lapNumber.textContent, 10);
+                        lapNumber.textContent = currentLap + 1;
+                    }
+                }
+            }
+
+            function handleResultsView(button) {
+                const row = button.closest('tr');
+                const rowId = row.id;
+                const index = button.dataset.index;
+                const stopwatchNum = button.dataset.sw;
+                const name = row.cells[1].textContent;
+                const laps = lapData[rowId];
+                
+                // Get total time from the specific timing cell
+                const timingCell = document.getElementById(`timing${stopwatchNum}-${index}`);
+                const totalTime = timingCell.textContent;
+                
+                let lapContent = `<h2 class="text-xl font-bold mb-3 text-gray-900">Lap Times - ${name}</h2>`;
+                lapContent += `<div class="text-left text-sm space-y-3">`;
+                
+                const timerKey = `sw${stopwatchNum}`;
+                
+                if (laps[timerKey].length > 0) {
+                    lapContent += `<div><strong class="text-gray-700">🕒 ${stopwatchNum}:</strong><ul class="mt-1 space-y-1 ml-4">`;
+                    laps[timerKey].forEach((time, idx) => {
+                        lapContent += `<li class="timing-cell">Lap ${idx + 1}: ${time}</li>`;
+                    });
+                    
+                    // Show total time
+                    if (totalTime !== '00:00.000') {
+                        lapContent += `<li class="timing-cell font-bold mt-2">Total: ${totalTime}</li>`;
+                    }
+                    lapContent += `</ul></div>`;
+                } else {
+                    lapContent += `<p class="text-gray-500">No lap times recorded yet for 🕒 ${stopwatchNum}.</p>`;
+                }
+                
+                lapContent += `</div>`;
+                showModal(lapContent, true);
+            }
             
             function startTimer(timerId, buttonElement) {
                 const index = timerId.split('-')[1];
                 const timerType = timerId.startsWith('sw1') ? 1 : 2;
                 const timingCell = document.getElementById(`timing${timerType}-${index}`);
+                const rowId = `row-${index}`;
+                const timerTypeKey = timerId.startsWith('sw1') ? 'sw1' : 'sw2';
+                const row = buttonElement.closest('tr');
+                const lapBtn = row.querySelector(`.lap-btn[data-sw="${timerType}"][data-index="${index}"]`);
+                const lapNumber = row.querySelector(`.lap-number[data-sw="${timerType}"][data-index="${index}"]`);
+                
                 timingCell.textContent = '00:00.000';
                 
                 const startTime = performance.now();
+                
+                // Set lap start time to the timer start time
+                lapStartTimes[rowId][timerTypeKey] = startTime;
+                
                 const intervalId = setInterval(() => {
                     const elapsedTime = performance.now() - (runningTimers[timerId]?.startTime || 0);
                     timingCell.textContent = formatTime(elapsedTime);
@@ -242,20 +429,120 @@
 
                 runningTimers[timerId] = { startTime, intervalId, timingCell };
                 buttonElement.textContent = 'STOP';
-                buttonElement.classList.replace('bg-green-500', 'bg-red-500');
-                buttonElement.classList.replace('hover:bg-green-600', 'hover:bg-red-600');
+                
+                // Show lap button and lap number when running
+                if (lapBtn) {
+                    lapBtn.classList.remove('hidden');
+                }
+                if (lapNumber) {
+                    lapNumber.classList.remove('hidden');
+                    lapNumber.textContent = '1';
+                }
+                
+                // Change to red when running
+                if (timerType === 1) {
+                    buttonElement.classList.remove('sw1-bg');
+                    buttonElement.classList.add('bg-red-500', 'hover:bg-red-600');
+                    buttonElement.style.color = '#fff';
+                } else {
+                    buttonElement.classList.remove('sw2-bg');
+                    buttonElement.classList.add('bg-red-500', 'hover:bg-red-600');
+                    buttonElement.style.color = '#000';
+                    buttonElement.style.fontWeight = '900';
+                }
             }
 
             function stopTimer(timerId, buttonElement) {
                 if (runningTimers[timerId]) {
                     clearInterval(runningTimers[timerId].intervalId);
-                    const finalElapsedTime = performance.now() - runningTimers[timerId].startTime;
-                    runningTimers[timerId].timingCell.textContent = formatTime(finalElapsedTime);
+                    
+                    const index = timerId.split('-')[1];
+                    const rowId = `row-${index}`;
+                    const timerType = timerId.startsWith('sw1') ? 'sw1' : 'sw2';
+                    const stopwatchNum = timerId.startsWith('sw1') ? 1 : 2;
+                    const row = buttonElement.closest('tr');
+                    const lapBtn = row.querySelector(`.lap-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                    const resultsBtn = row.querySelector(`.results-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                    const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                    
+                    // Calculate final lap time (time since last lap or start)
+                    const currentTime = performance.now();
+                    const lapStartTime = lapStartTimes[rowId][timerType] || runningTimers[timerId].startTime;
+                    const finalLapElapsed = currentTime - lapStartTime;
+                    const finalLapTime = formatTime(finalLapElapsed);
+                    
+                    // Calculate total time (from original start)
+                    const totalElapsed = currentTime - runningTimers[timerId].startTime;
+                    const totalTime = formatTime(totalElapsed);
+                    
+                    // Display total time in the timing cell
+                    runningTimers[timerId].timingCell.textContent = totalTime;
+                    
+                    // Add final lap time to lap data
+                    lapData[rowId][timerType].push(finalLapTime);
+                    
+                    // Hide lap button and lap number, show results button
+                    if (lapBtn) {
+                        lapBtn.classList.add('hidden');
+                    }
+                    if (lapNumber) {
+                        lapNumber.classList.add('hidden');
+                    }
+                    if (resultsBtn) {
+                        resultsBtn.classList.remove('hidden');
+                    }
+                    
+                    // Reset lap start time
+                    lapStartTimes[rowId][timerType] = null;
+                    
                     delete runningTimers[timerId];
                 }
+                buttonElement.textContent = 'RESTART';
+                
+                // Restore original color
+                buttonElement.classList.remove('bg-red-500', 'hover:bg-red-600');
+                if (timerId.startsWith('sw1')) {
+                    buttonElement.classList.add('sw1-bg');
+                    buttonElement.style.color = '';
+                } else {
+                    buttonElement.classList.add('sw2-bg');
+                    buttonElement.style.color = '#000';
+                    buttonElement.style.fontWeight = '900';
+                }
+            }
+
+            function restartTimer(timerId, buttonElement) {
+                const index = timerId.split('-')[1];
+                const rowId = `row-${index}`;
+                const timerType = timerId.startsWith('sw1') ? 'sw1' : 'sw2';
+                const stopwatchNum = timerId.startsWith('sw1') ? 1 : 2;
+                const timingCell = document.getElementById(`timing${stopwatchNum}-${index}`);
+                const row = buttonElement.closest('tr');
+                const lapBtn = row.querySelector(`.lap-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                const resultsBtn = row.querySelector(`.results-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                
+                // Reset timing display
+                timingCell.textContent = '00:00.000';
+                
+                // Clear lap data
+                lapData[rowId][timerType] = [];
+                lapStartTimes[rowId][timerType] = null;
+                
+                // Hide results button, lap button, and lap number
+                if (resultsBtn) {
+                    resultsBtn.classList.add('hidden');
+                }
+                if (lapBtn) {
+                    lapBtn.classList.add('hidden');
+                }
+                if (lapNumber) {
+                    lapNumber.classList.add('hidden');
+                    lapNumber.textContent = '1';
+                }
+                
+                // Reset button to START
                 buttonElement.textContent = 'START';
-                buttonElement.classList.replace('bg-red-500', 'bg-green-500');
-                buttonElement.classList.replace('hover:bg-red-600', 'hover:bg-green-600');
             }
 
             function formatTime(milliseconds) {
@@ -267,29 +554,44 @@
             }
 
             // --- 3. Control Panel Logic ---
-            massStart1Btn.addEventListener('click', () => massStart(1));
-            massStart2Btn.addEventListener('click', () => massStart(2));
-            copyResultsBtn.addEventListener('click', copyResults);
+            massStartBtn.addEventListener('click', massStart);
+            exportResultsBtn.addEventListener('click', showExportOptions);
 
             resetAllBtn.addEventListener('click', () => {
                 Object.values(runningTimers).forEach(timer => clearInterval(timer.intervalId));
                 runningTimers = {};
+                lapData = {};
+                lapStartTimes = {};
                 tableBody.querySelectorAll('tr').forEach(row => {
                     const markCheckbox = row.querySelector('.mark-checkbox');
                     if (markCheckbox) {
                         markCheckbox.checked = true;
-                        row.querySelector('.lap-count').textContent = '1';
                         row.querySelectorAll('.timing-cell').forEach(cell => cell.textContent = '00:00.000');
                         row.querySelectorAll('.sw-button').forEach(button => {
                             button.textContent = 'START';
-                            button.classList.replace('bg-red-500', 'bg-green-500');
-                            button.classList.replace('hover:bg-red-600', 'hover:bg-green-600');
+                            button.classList.remove('bg-red-500', 'hover:bg-red-600');
+                            if (button.dataset.timerId.startsWith('sw1')) {
+                                button.classList.add('sw1-bg');
+                            } else {
+                                button.classList.add('sw2-bg');
+                            }
                         });
+                        // Hide L, R buttons and lap numbers
+                        row.querySelectorAll('.lap-btn, .results-btn, .lap-number').forEach(btn => btn.classList.add('hidden'));
+                        // Reset lap numbers to 1
+                        row.querySelectorAll('.lap-number').forEach(num => num.textContent = '1');
+                        // Reset radio buttons - select SW1 by default
+                        const sw1Radio = row.querySelector('.sw-radio[data-sw="1"]');
+                        if (sw1Radio) sw1Radio.checked = true;
+                        // Reset lap data for this row
+                        lapData[row.id] = { sw1: [], sw2: [] };
+                        lapStartTimes[row.id] = { sw1: null, sw2: null };
                     }
                 });
                 isShowingAll = true;
                 applyRowVisibility();
                 updateToggleViewButton();
+                toggleCheckboxVisibility();
             });
 
             masterMarkCheckbox.addEventListener('change', () => {
@@ -307,7 +609,90 @@
                 isShowingAll = !isShowingAll;
                 applyRowVisibility();
                 updateToggleViewButton();
+                toggleCheckboxVisibility();
             });
+
+            // Header radio button listeners
+            selectAllSW1.addEventListener('change', () => {
+                if (selectAllSW1.checked) {
+                    tableBody.querySelectorAll('tr').forEach(row => {
+                        const sw1Radio = row.querySelector('.sw-radio[data-sw="1"]');
+                        if (sw1Radio) sw1Radio.checked = true;
+                    });
+                }
+            });
+
+            selectAllSW2.addEventListener('change', () => {
+                if (selectAllSW2.checked) {
+                    tableBody.querySelectorAll('tr').forEach(row => {
+                        const sw2Radio = row.querySelector('.sw-radio[data-sw="2"]');
+                        if (sw2Radio) sw2Radio.checked = true;
+                    });
+                }
+            });
+
+            function toggleCheckboxVisibility() {
+                if (isShowingAll) {
+                    // Show checkbox column when showing all
+                    mainTable.classList.remove('checkbox-column-hidden');
+                } else {
+                    // Hide checkbox column when hiding unmarked
+                    mainTable.classList.add('checkbox-column-hidden');
+                }
+            }
+
+            toggleAllStopwatchesBtn.addEventListener('click', () => {
+                toggleAllStopwatches();
+            });
+
+            function toggleAllStopwatches() {
+                const sw1Headers = document.querySelectorAll('.sw1-header');
+                const sw2Headers = document.querySelectorAll('.sw2-header');
+                
+                // Toggle all rows
+                tableBody.querySelectorAll('tr').forEach(row => {
+                    const sw1Cells = row.querySelectorAll('.sw1-cell');
+                    const sw2Cells = row.querySelectorAll('.sw2-cell');
+                    const toggleBtn = row.querySelector('.toggle-sw-btn');
+                    
+                    if (isShowingSW1) {
+                        // Switch to SW2
+                        sw1Cells.forEach(cell => cell.classList.add('hidden'));
+                        sw2Cells.forEach(cell => cell.classList.remove('hidden'));
+                        if (toggleBtn) {
+                            toggleBtn.textContent = '🕒1';
+                            toggleBtn.classList.replace('bg-orange-500', 'bg-teal-500');
+                            toggleBtn.classList.replace('hover:bg-orange-600', 'hover:bg-teal-600');
+                        }
+                    } else {
+                        // Switch to SW1
+                        sw2Cells.forEach(cell => cell.classList.add('hidden'));
+                        sw1Cells.forEach(cell => cell.classList.remove('hidden'));
+                        if (toggleBtn) {
+                            toggleBtn.textContent = '🕒2';
+                            toggleBtn.classList.replace('bg-teal-500', 'bg-orange-500');
+                            toggleBtn.classList.replace('hover:bg-teal-600', 'hover:bg-orange-600');
+                        }
+                    }
+                });
+                
+                // Toggle headers
+                if (isShowingSW1) {
+                    sw1Headers.forEach(header => header.classList.add('hidden'));
+                    sw2Headers.forEach(header => header.classList.remove('hidden'));
+                    toggleAllStopwatchesBtn.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">1</span>';
+                    toggleAllStopwatchesBtn.classList.replace('bg-orange-500', 'bg-teal-500');
+                    toggleAllStopwatchesBtn.classList.replace('hover:bg-orange-600', 'hover:bg-teal-600');
+                } else {
+                    sw2Headers.forEach(header => header.classList.add('hidden'));
+                    sw1Headers.forEach(header => header.classList.remove('hidden'));
+                    toggleAllStopwatchesBtn.innerHTML = '<span class="clock-emoji">🕒</span><span class="clock-text">2</span>';
+                    toggleAllStopwatchesBtn.classList.replace('bg-teal-500', 'bg-orange-500');
+                    toggleAllStopwatchesBtn.classList.replace('hover:bg-teal-600', 'hover:bg-orange-600');
+                }
+                
+                isShowingSW1 = !isShowingSW1;
+            }
 
             function applyRowVisibility() {
                 tableBody.querySelectorAll('tr').forEach(row => {
@@ -323,7 +708,8 @@
                     }
                 });
             }
-             function updateToggleViewButton() {
+            
+            function updateToggleViewButton() {
                 toggleViewBtn.textContent = isShowingAll ? 'Hide Unmarked' : 'Show All';
                 toggleViewBtn.classList.toggle('bg-yellow-500', isShowingAll);
                 toggleViewBtn.classList.toggle('hover:bg-yellow-600', isShowingAll);
@@ -331,52 +717,149 @@
                 toggleViewBtn.classList.toggle('hover:bg-indigo-600', !isShowingAll);
             }
 
-            function massStart(timerType) {
-                tableBody.querySelectorAll('tr').forEach((row, index) => {
+            function massStart() {
+                tableBody.querySelectorAll('tr').forEach((row) => {
                     const markCheckbox = row.querySelector('.mark-checkbox');
                     if (markCheckbox && markCheckbox.checked) {
-                        const button = row.querySelector(`[data-timer-id="sw${timerType}-${index}"]`);
-                        if (button && button.textContent === 'START') button.click();
+                        // Check which stopwatch is selected via radio button
+                        const sw1Radio = row.querySelector('.sw-radio[data-sw="1"]');
+                        const sw2Radio = row.querySelector('.sw-radio[data-sw="2"]');
+                        
+                        if (sw1Radio && sw1Radio.checked) {
+                            // Start SW1
+                            const sw1Button = row.querySelector('[data-timer-id^="sw1"]');
+                            if (sw1Button && sw1Button.textContent.trim() === 'START') {
+                                sw1Button.click();
+                            }
+                        } else if (sw2Radio && sw2Radio.checked) {
+                            // Start SW2
+                            const sw2Button = row.querySelector('[data-timer-id^="sw2"]');
+                            if (sw2Button && sw2Button.textContent.trim() === 'START') {
+                                sw2Button.click();
+                            }
+                        }
                     }
                 });
             }
 
-            function copyResults() {
+            function showExportOptions() {
                 if (tableBody.querySelectorAll('tr').length === 0 || tableBody.querySelector('td[colspan="8"]')) {
-                    showModal("No data to copy.");
+                    showModal("No data to export.");
                     return;
                 }
-                let contentToCopy = '"Name","Class","Laps","Timing1","Timing2"\n';
-                let copiedCount = 0;
+                
+                const exportContent = `
+                    <h2 class="text-xl font-bold mb-4 text-gray-900">Export Options</h2>
+                    <div class="space-y-3">
+                        <button id="exportSummary" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                            Export Summary (CSV)
+                        </button>
+                        <button id="exportDetailed" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                            Export Detailed (CSV)
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-4">Summary includes final times. Detailed includes all lap times.</p>
+                `;
+                showModal(exportContent, true);
+                
+                // Add event listeners after modal is shown
+                setTimeout(() => {
+                    document.getElementById('exportSummary')?.addEventListener('click', exportSummary);
+                    document.getElementById('exportDetailed')?.addEventListener('click', exportDetailed);
+                }, 0);
+            }
+
+            function exportSummary() {
+                let csvContent = '"Name","Class","Timing 🕒1","Timing 🕒2"\n';
+                let exportedCount = 0;
+                
                 tableBody.querySelectorAll('tr').forEach((row) => {
                     const markCheckbox = row.querySelector('.mark-checkbox');
                     if (markCheckbox && markCheckbox.checked) {
                         const name = row.cells[1].textContent;
                         const studentClass = row.cells[2].textContent;
-                        const lapCount = row.querySelector('.lap-count').textContent;
-                        const timing1 = row.cells[5].textContent;
-                        const timing2 = row.cells[7].textContent;
-                        contentToCopy += `"${name}","${studentClass}","${lapCount}","${timing1}","${timing2}"\n`;
-                        copiedCount++;
+                        const timing1 = row.querySelector('.timing-cell.sw1-cell').textContent;
+                        const timing2 = row.querySelector('.timing-cell.sw2-cell').textContent;
+                        
+                        csvContent += `"${name}","${studentClass}","${timing1}","${timing2}"\n`;
+                        exportedCount++;
                     }
                 });
                 
-                if(copiedCount === 0){
-                    showModal("No participants are marked to be copied.");
+                if (exportedCount === 0) {
+                    showModal("No participants are marked to be exported.");
                     return;
                 }
-                const textarea = document.createElement('textarea');
-                textarea.value = contentToCopy;
-                document.body.appendChild(textarea);
-                textarea.select();
-                try {
-                    document.execCommand('copy');
-                    showModal('Results for marked participants copied to clipboard!');
-                } catch (err) {
-                    showModal('Failed to copy results.');
-                    console.error('Clipboard copy error:', err);
+                
+                downloadCSV(csvContent, 'stopwatch_summary.csv');
+                modal.classList.remove('visible');
+                showModal(`Summary exported successfully! (${exportedCount} participants)`);
+            }
+
+            function exportDetailed() {
+                let csvContent = '"Name","Class","Stopwatch","Lap Number","Lap Time","Total Time"\n';
+                let exportedCount = 0;
+                
+                tableBody.querySelectorAll('tr').forEach((row) => {
+                    const markCheckbox = row.querySelector('.mark-checkbox');
+                    if (markCheckbox && markCheckbox.checked) {
+                        const name = row.cells[1].textContent;
+                        const studentClass = row.cells[2].textContent;
+                        const rowId = row.id;
+                        const timing1 = row.querySelector('.timing-cell.sw1-cell').textContent;
+                        const timing2 = row.querySelector('.timing-cell.sw2-cell').textContent;
+                        
+                        // Export Stopwatch 1 laps
+                        if (lapData[rowId].sw1.length > 0) {
+                            lapData[rowId].sw1.forEach((lapTime, idx) => {
+                                const lapNum = idx + 1;
+                                const totalTime = lapNum === lapData[rowId].sw1.length ? timing1 : '';
+                                csvContent += `"${name}","${studentClass}","🕒1","${lapNum}","${lapTime}","${totalTime}"\n`;
+                            });
+                            exportedCount++;
+                        } else if (timing1 !== '00:00.000') {
+                            // If stopwatch 1 was used but no laps recorded
+                            csvContent += `"${name}","${studentClass}","🕒1","1","${timing1}","${timing1}"\n`;
+                            exportedCount++;
+                        }
+                        
+                        // Export Stopwatch 2 laps
+                        if (lapData[rowId].sw2.length > 0) {
+                            lapData[rowId].sw2.forEach((lapTime, idx) => {
+                                const lapNum = idx + 1;
+                                const totalTime = lapNum === lapData[rowId].sw2.length ? timing2 : '';
+                                csvContent += `"${name}","${studentClass}","🕒2","${lapNum}","${lapTime}","${totalTime}"\n`;
+                            });
+                            exportedCount++;
+                        } else if (timing2 !== '00:00.000') {
+                            // If stopwatch 2 was used but no laps recorded
+                            csvContent += `"${name}","${studentClass}","🕒2","1","${timing2}","${timing2}"\n`;
+                            exportedCount++;
+                        }
+                    }
+                });
+                
+                if (exportedCount === 0) {
+                    showModal("No timing data to export.");
+                    return;
                 }
-                document.body.removeChild(textarea);
+                
+                downloadCSV(csvContent, 'stopwatch_detailed.csv');
+                modal.classList.remove('visible');
+                showModal(`Detailed data exported successfully!`);
+            }
+
+            function downloadCSV(content, filename) {
+                const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
 
             // --- 4. Custom Modal and Credits ---
@@ -387,10 +870,27 @@
                     modalMessage.innerHTML = `<p class="text-lg text-center">${content}</p>`;
                 }
                 modal.classList.add('visible');
+                
+                // Re-attach close button listener to handle dynamically added content
+                setTimeout(() => {
+                    const closeBtn = document.getElementById('modalCloseBtn');
+                    if (closeBtn) {
+                        closeBtn.onclick = () => modal.classList.remove('visible');
+                    }
+                }, 0);
             }
 
-            modalCloseBtn.addEventListener('click', () => modal.classList.remove('visible'));
-            modal.addEventListener('click', (event) => { if (event.target === modal) modal.classList.remove('visible'); });
+            modalCloseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                modal.classList.remove('visible');
+            });
+            
+            modal.addEventListener('click', (event) => { 
+                if (event.target === modal) {
+                    modal.classList.remove('visible');
+                }
+            });
 
             creditsLink.addEventListener('click', async (event) => {
                 event.preventDefault();
@@ -426,4 +926,3 @@
     </script>
 </body>
 </html>
-
