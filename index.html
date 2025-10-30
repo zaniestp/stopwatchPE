@@ -634,7 +634,7 @@
                 }, 0);
             }
 
-            function exportSummary() {
+            async function exportSummary() {
                 let csvContent = '"Name","Class","Timing 🕒1","Timing 🕒2"\n';
                 let exportedCount = 0;
                 
@@ -656,12 +656,12 @@
                     return;
                 }
                 
-                downloadCSV(csvContent, 'stopwatch_summary.csv');
+                await downloadCSV(csvContent, 'stopwatch_summary.csv');
                 modal.classList.remove('visible');
                 showModal(`Summary exported successfully! (${exportedCount} participants)`);
             }
 
-            function exportDetailed() {
+            async function exportDetailed() {
                 let csvContent = '"Name","Class","Stopwatch","Lap Number","Lap Time","Total Time"\n';
                 let exportedCount = 0;
                 
@@ -705,13 +705,36 @@
                     return;
                 }
                 
-                downloadCSV(csvContent, 'stopwatch_detailed.csv');
+                await downloadCSV(csvContent, 'stopwatch_detailed.csv');
                 modal.classList.remove('visible');
                 showModal(`Detailed data exported successfully!`);
             }
 
-            function downloadCSV(content, filename) {
+            async function downloadCSV(content, filename) {
                 const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+                
+                // Try to use Web Share API (works on mobile and some desktop browsers)
+                if (navigator.share && navigator.canShare) {
+                    try {
+                        const file = new File([blob], filename, { type: 'text/csv' });
+                        
+                        // Check if we can share files
+                        if (navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                title: 'Stopwatch Results',
+                                text: 'Here are the stopwatch timing results',
+                                files: [file]
+                            });
+                            console.log('Share successful');
+                            return;
+                        }
+                    } catch (error) {
+                        // User cancelled or share failed, fall back to download
+                        console.log('Share cancelled or failed:', error.message);
+                    }
+                }
+                
+                // Fallback: Traditional download method
                 const link = document.createElement('a');
                 const url = URL.createObjectURL(blob);
                 
@@ -721,6 +744,9 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                
+                // Clean up the URL object
+                setTimeout(() => URL.revokeObjectURL(url), 100);
             }
 
             function showModal(content, isHtml = false) {
