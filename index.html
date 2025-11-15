@@ -153,6 +153,7 @@
         </div>
     </div>
 
+    <!-- Main Modal -->
     <div id="customModal" class="modal-backdrop">
         <div class="modal-content text-center">
             <div id="modalMessage" class="mb-4"></div>
@@ -183,6 +184,7 @@
             let lapStartTimes = {};
             let isShowingAll = true;
 
+            // Event Listeners
             csvFileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
@@ -205,10 +207,58 @@
                 reader.readAsText(file);
             });
 
+            tableBody.addEventListener('click', (event) => {
+                const target = event.target;
+                if (target.classList.contains('sw-button')) {
+                    const timerId = target.dataset.timerId;
+                    const buttonText = target.textContent.trim();
+                    if (buttonText === 'START') {
+                        startTimer(timerId, target);
+                    } else if (buttonText === 'STOP') {
+                        stopTimer(timerId, target);
+                    } else if (buttonText === 'RESTART') {
+                        restartTimer(timerId, target);
+                    }
+                } else if (target.classList.contains('lap-btn')) {
+                    handleLapIncrement(target);
+                } else if (target.classList.contains('results-btn')) {
+                    handleResultsView(target);
+                }
+            });
+
+            tableBody.addEventListener('change', (event) => {
+                if(event.target.classList.contains('mark-checkbox')) {
+                    if(!isShowingAll) {
+                        applyRowVisibility();
+                    }
+                }
+            });
+
+            massStartBtn.addEventListener('click', massStart);
+            exportResultsBtn.addEventListener('click', showExportOptions);
+            resetAllBtn.addEventListener('click', resetAll);
+            masterMarkCheckbox.addEventListener('change', toggleAllCheckboxes);
+            toggleViewBtn.addEventListener('click', toggleRowVisibility);
+            selectAllSW1.addEventListener('change', () => selectAllTimers(1));
+            selectAllSW2.addEventListener('change', () => selectAllTimers(2));
+            creditsLink.addEventListener('click', showCredits);
+            modalCloseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                modal.classList.remove('visible');
+            });
+            modal.addEventListener('click', (event) => { 
+                if (event.target === modal) {
+                    modal.classList.remove('visible');
+                }
+            });
+
+            // CSV and Table Population
             function parseCSV(text) {
                 const lines = text.trim().split(/\r?\n/);
                 const headers = lines.shift().toLowerCase().split(',').map(h => h.trim());
                 
+                // Check for exact headers "name" and "class"
                 if (headers[0] !== 'name' || headers[1] !== 'class') {
                     throw new Error('Headers must be "name,class"');
                 }
@@ -216,7 +266,7 @@
                 return lines.map(line => {
                     const values = line.split(',');
                     return { name: (values[0] || '').trim(), class: (values[1] || '').trim() };
-                }).filter(item => item.name);
+                }).filter(item => item.name); // Filter out empty lines
             }
 
             function populateTable(data) {
@@ -262,32 +312,113 @@
                 toggleCheckboxVisibility();
             }
 
-            tableBody.addEventListener('click', (event) => {
-                const target = event.target;
-                if (target.classList.contains('sw-button')) {
-                    const timerId = target.dataset.timerId;
-                    const buttonText = target.textContent.trim();
-                    if (buttonText === 'START') {
-                        startTimer(timerId, target);
-                    } else if (buttonText === 'STOP') {
-                        stopTimer(timerId, target);
-                    } else if (buttonText === 'RESTART') {
-                        restartTimer(timerId, target);
-                    }
-                } else if (target.classList.contains('lap-btn')) {
-                    handleLapIncrement(target);
-                } else if (target.classList.contains('results-btn')) {
-                    handleResultsView(target);
-                }
-            });
+            // Stopwatch Logic
+            function startTimer(timerId, buttonElement) {
+                const index = timerId.split('-')[1];
+                const timerType = timerId.startsWith('sw1') ? 1 : 2;
+                const timingCell = document.getElementById(`timing${timerType}-${index}`);
+                const rowId = `row-${index}`;
+                const timerTypeKey = timerId.startsWith('sw1') ? 'sw1' : 'sw2';
+                const row = buttonElement.closest('tr');
+                const lapBtn = row.querySelector(`.lap-btn[data-sw="${timerType}"][data-index="${index}"]`);
+                const lapNumber = row.querySelector(`.lap-number[data-sw="${timerType}"][data-index="${index}"]`);
+                
+                timingCell.textContent = '00:00.000';
+                
+                const startTime = performance.now();
+                
+                lapStartTimes[rowId][timerTypeKey] = startTime;
+                
+                const intervalId = setInterval(() => {
+                    const elapsedTime = performance.now() - (runningTimers[timerId]?.startTime || 0);
+                    timingCell.textContent = formatTime(elapsedTime);
+                }, 47); // Update frequently for millisecond accuracy
 
-            tableBody.addEventListener('change', (event) => {
-                if(event.target.classList.contains('mark-checkbox')) {
-                    if(!isShowingAll) {
-                        applyRowVisibility();
-                    }
+                runningTimers[timerId] = { startTime, intervalId, timingCell };
+                buttonElement.textContent = 'STOP';
+                
+                if (lapBtn) lapBtn.classList.remove('hidden');
+                if (lapNumber) {
+                    lapNumber.classList.remove('hidden');
+                    lapNumber.textContent = '1';
                 }
-            });
+                
+                buttonElement.classList.remove('sw1-bg', 'sw2-bg');
+                buttonElement.classList.add('bg-red-500', 'hover:bg-red-600');
+                buttonElement.style.color = timerType === 1 ? '#fff' : '#000';
+            }
+
+            function stopTimer(timerId, buttonElement) {
+                if (runningTimers[timerId]) {
+                    clearInterval(runningTimers[timerId].intervalId);
+                    
+                    const index = timerId.split('-')[1];
+                    const rowId = `row-${index}`;
+                    const timerType = timerId.startsWith('sw1') ? 'sw1' : 'sw2';
+                    const stopwatchNum = timerType;
+                    const row = buttonElement.closest('tr');
+                    const lapBtn = row.querySelector(`.lap-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                    const resultsBtn = row.querySelector(`.results-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                    const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                    
+                    const currentTime = performance.now();
+                    const lapStartTime = lapStartTimes[rowId][timerType] || runningTimers[timerId].startTime;
+                    const finalLapElapsed = currentTime - lapStartTime;
+                    const finalLapTime = formatTime(finalLapElapsed);
+                    
+                    const totalElapsed = currentTime - runningTimers[timerId].startTime;
+                    const totalTime = formatTime(totalElapsed);
+                    
+                    runningTimers[timerId].timingCell.textContent = totalTime;
+                    
+                    // Add the final lap
+                    lapData[rowId][timerType].push(finalLapTime);
+                    
+                    if (lapBtn) lapBtn.classList.add('hidden');
+                    if (lapNumber) lapNumber.classList.add('hidden');
+                    if (resultsBtn) resultsBtn.classList.remove('hidden');
+                    
+                    lapStartTimes[rowId][timerType] = null;
+                    
+                    delete runningTimers[timerId];
+                }
+                buttonElement.textContent = 'RESTART';
+                
+                buttonElement.classList.remove('bg-red-500', 'hover:bg-red-600');
+                if (timerId.startsWith('sw1')) {
+                    buttonElement.classList.add('sw1-bg');
+                    buttonElement.style.color = '';
+                } else {
+                    buttonElement.classList.add('sw2-bg');
+                    buttonElement.style.color = '#000';
+                }
+            }
+
+            function restartTimer(timerId, buttonElement) {
+                const index = timerId.split('-')[1];
+                const rowId = `row-${index}`;
+                const timerType = timerId.startsWith('sw1') ? 'sw1' : 'sw2';
+                const stopwatchNum = timerType;
+                const timingCell = document.getElementById(`timing${stopwatchNum}-${index}`);
+                const row = buttonElement.closest('tr');
+                const lapBtn = row.querySelector(`.lap-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                const resultsBtn = row.querySelector(`.results-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
+                
+                timingCell.textContent = '00:00.000';
+                
+                lapData[rowId][timerType] = [];
+                lapStartTimes[rowId][timerType] = null;
+                
+                if (resultsBtn) resultsBtn.classList.add('hidden');
+                if (lapBtn) lapBtn.classList.add('hidden');
+                if (lapNumber) {
+                    lapNumber.classList.add('hidden');
+                    lapNumber.textContent = '1';
+                }
+                
+                buttonElement.textContent = 'START';
+            }
 
             function handleLapIncrement(button) {
                 const row = button.closest('tr');
@@ -348,133 +479,8 @@
                 lapContent += `</div>`;
                 showModal(lapContent, true);
             }
-            
-            function startTimer(timerId, buttonElement) {
-                const index = timerId.split('-')[1];
-                const timerType = timerId.startsWith('sw1') ? 1 : 2;
-                const timingCell = document.getElementById(`timing${timerType}-${index}`);
-                const rowId = `row-${index}`;
-                const timerTypeKey = timerId.startsWith('sw1') ? 'sw1' : 'sw2';
-                const row = buttonElement.closest('tr');
-                const lapBtn = row.querySelector(`.lap-btn[data-sw="${timerType}"][data-index="${index}"]`);
-                const lapNumber = row.querySelector(`.lap-number[data-sw="${timerType}"][data-index="${index}"]`);
-                
-                timingCell.textContent = '00:00.000';
-                
-                const startTime = performance.now();
-                
-                lapStartTimes[rowId][timerTypeKey] = startTime;
-                
-                const intervalId = setInterval(() => {
-                    const elapsedTime = performance.now() - (runningTimers[timerId]?.startTime || 0);
-                    timingCell.textContent = formatTime(elapsedTime);
-                }, 47);
 
-                runningTimers[timerId] = { startTime, intervalId, timingCell };
-                buttonElement.textContent = 'STOP';
-                
-                if (lapBtn) {
-                    lapBtn.classList.remove('hidden');
-                }
-                if (lapNumber) {
-                    lapNumber.classList.remove('hidden');
-                    lapNumber.textContent = '1';
-                }
-                
-                if (timerType === 1) {
-                    buttonElement.classList.remove('sw1-bg');
-                    buttonElement.classList.add('bg-red-500', 'hover:bg-red-600');
-                    buttonElement.style.color = '#fff';
-                } else {
-                    buttonElement.classList.remove('sw2-bg');
-                    buttonElement.classList.add('bg-red-500', 'hover:bg-red-600');
-                    buttonElement.style.color = '#000';
-                    buttonElement.style.fontWeight = '900';
-                }
-            }
-
-            function stopTimer(timerId, buttonElement) {
-                if (runningTimers[timerId]) {
-                    clearInterval(runningTimers[timerId].intervalId);
-                    
-                    const index = timerId.split('-')[1];
-                    const rowId = `row-${index}`;
-                    const timerType = timerId.startsWith('sw1') ? 'sw1' : 'sw2';
-                    const stopwatchNum = timerId.startsWith('sw1') ? 1 : 2;
-                    const row = buttonElement.closest('tr');
-                    const lapBtn = row.querySelector(`.lap-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
-                    const resultsBtn = row.querySelector(`.results-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
-                    const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
-                    
-                    const currentTime = performance.now();
-                    const lapStartTime = lapStartTimes[rowId][timerType] || runningTimers[timerId].startTime;
-                    const finalLapElapsed = currentTime - lapStartTime;
-                    const finalLapTime = formatTime(finalLapElapsed);
-                    
-                    const totalElapsed = currentTime - runningTimers[timerId].startTime;
-                    const totalTime = formatTime(totalElapsed);
-                    
-                    runningTimers[timerId].timingCell.textContent = totalTime;
-                    
-                    lapData[rowId][timerType].push(finalLapTime);
-                    
-                    if (lapBtn) {
-                        lapBtn.classList.add('hidden');
-                    }
-                    if (lapNumber) {
-                        lapNumber.classList.add('hidden');
-                    }
-                    if (resultsBtn) {
-                        resultsBtn.classList.remove('hidden');
-                    }
-                    
-                    lapStartTimes[rowId][timerType] = null;
-                    
-                    delete runningTimers[timerId];
-                }
-                buttonElement.textContent = 'RESTART';
-                
-                buttonElement.classList.remove('bg-red-500', 'hover:bg-red-600');
-                if (timerId.startsWith('sw1')) {
-                    buttonElement.classList.add('sw1-bg');
-                    buttonElement.style.color = '';
-                } else {
-                    buttonElement.classList.add('sw2-bg');
-                    buttonElement.style.color = '#000';
-                    buttonElement.style.fontWeight = '900';
-                }
-            }
-
-            function restartTimer(timerId, buttonElement) {
-                const index = timerId.split('-')[1];
-                const rowId = `row-${index}`;
-                const timerType = timerId.startsWith('sw1') ? 'sw1' : 'sw2';
-                const stopwatchNum = timerId.startsWith('sw1') ? 1 : 2;
-                const timingCell = document.getElementById(`timing${stopwatchNum}-${index}`);
-                const row = buttonElement.closest('tr');
-                const lapBtn = row.querySelector(`.lap-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
-                const resultsBtn = row.querySelector(`.results-btn[data-sw="${stopwatchNum}"][data-index="${index}"]`);
-                const lapNumber = row.querySelector(`.lap-number[data-sw="${stopwatchNum}"][data-index="${index}"]`);
-                
-                timingCell.textContent = '00:00.000';
-                
-                lapData[rowId][timerType] = [];
-                lapStartTimes[rowId][timerType] = null;
-                
-                if (resultsBtn) {
-                    resultsBtn.classList.add('hidden');
-                }
-                if (lapBtn) {
-                    lapBtn.classList.add('hidden');
-                }
-                if (lapNumber) {
-                    lapNumber.classList.add('hidden');
-                    lapNumber.textContent = '1';
-                }
-                
-                buttonElement.textContent = 'START';
-            }
-
+            // Time Formatting
             function formatTime(milliseconds) {
                 const totalSeconds = Math.floor(milliseconds / 1000);
                 const ms = Math.floor(milliseconds % 1000).toString().padStart(3, '0');
@@ -482,15 +488,131 @@
                 const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
                 return `${minutes}:${seconds}.${ms}`;
             }
+            
+            // --- NEW ROBUST FORMATTING FUNCTIONS ---
 
-            massStartBtn.addEventListener('click', massStart);
-            exportResultsBtn.addEventListener('click', showExportOptions);
+            // Formats to 0.1s accuracy, but pads with a zero (e.g., "00:10.40")
+            function formatTimeTenths(timeString) {
+                if (!timeString || timeString === '00:00.000') return '00:00.00'; 
+                
+                const parts = timeString.split(/[:.]/);
+                if (parts.length !== 3) return timeString; 
 
-            resetAllBtn.addEventListener('click', () => {
+                try {
+                    let minutes = parseInt(parts[0], 10);
+                    let seconds = parseInt(parts[1], 10);
+                    let milliseconds = parseInt(parts[2], 10);
+                    
+                    if (isNaN(minutes) || isNaN(seconds) || isNaN(milliseconds)) {
+                        return timeString; 
+                    }
+
+                    // Explicitly round milliseconds to nearest 100
+                    // e.g., 435ms -> Math.round(4.35) * 100 -> 4 * 100 -> 400
+                    let roundedMs = Math.round(milliseconds / 100) * 100;
+                    
+                    // Base total in ms, using *only* seconds and minutes
+                    let totalBaseMilliseconds = (minutes * 60 * 1000) + (seconds * 1000);
+                    
+                    // Add rounded ms. Handle carry-over if ms rounds up to 1000
+                    // e.g., 980ms -> 1000ms
+                    if (roundedMs === 1000) {
+                        totalBaseMilliseconds += 1000; // Add 1 second
+                        roundedMs = 0; // Reset ms
+                    }
+                    
+                    let finalTotalMilliseconds = totalBaseMilliseconds + roundedMs;
+                    
+                    const finalTotalSeconds = Math.floor(finalTotalMilliseconds / 1000);
+                    const finalMinutes = Math.floor(finalTotalSeconds / 60).toString().padStart(2, '0');
+                    const finalSeconds = (finalTotalSeconds % 60).toString().padStart(2, '0');
+                    
+                    // Get TENTHS part, pad to 2 decimals
+                    // e.g., 400ms -> 4. 900ms -> 9. 0ms -> 0.
+                    const finalTenths = (Math.floor(roundedMs / 100) % 10).toString() + "0";
+                    
+                    return `${finalMinutes}:${finalSeconds}.${finalTenths}`;
+                } catch (e) {
+                    console.error("Error formatting time to tenths:", e, timeString);
+                    return timeString;
+                }
+            }
+
+            // Formats to 0.01s accuracy (e.g., "00:10.44")
+            function formatTimeHundredths(timeString) {
+                if (!timeString || timeString === '00:00.000') return '00:00.00';
+                
+                const parts = timeString.split(/[:.]/);
+                if (parts.length !== 3) return timeString; 
+
+                try {
+                    let minutes = parseInt(parts[0], 10);
+                    let seconds = parseInt(parts[1], 10);
+                    let milliseconds = parseInt(parts[2], 10);
+                    
+                    if (isNaN(minutes) || isNaN(seconds) || isNaN(milliseconds)) {
+                        return timeString; 
+                    }
+                    
+                    // Explicitly round milliseconds to nearest 10
+                    // e.g., 435ms -> Math.round(43.5) * 10 -> 44 * 10 -> 440
+                    let roundedMs = Math.round(milliseconds / 10) * 10;
+
+                    // Base total in ms, using *only* seconds and minutes
+                    let totalBaseMilliseconds = (minutes * 60 * 1000) + (seconds * 1000);
+
+                    // Handle carry-over if ms rounds up to 1000
+                    // e.g., 995ms -> 1000ms
+                    if (roundedMs === 1000) {
+                        totalBaseMilliseconds += 1000; // Add 1 second
+                        roundedMs = 0; // Reset ms
+                    }
+                    
+                    let finalTotalMilliseconds = totalBaseMilliseconds + roundedMs;
+
+                    const finalTotalSeconds = Math.floor(finalTotalMilliseconds / 1000);
+                    const finalMinutes = Math.floor(finalTotalSeconds / 60).toString().padStart(2, '0');
+                    const finalSeconds = (finalTotalSeconds % 60).toString().padStart(2, '0');
+
+                    // Get hundredths part (0-99)
+                    // e.g., 440ms -> 44. 990ms -> 99. 0ms -> 00.
+                    const finalHundredths = (Math.floor(roundedMs / 10) % 100).toString().padStart(2, '0');
+                    
+                    return `${finalMinutes}:${finalSeconds}.${finalHundredths}`;
+                } catch (e) {
+                    console.error("Error formatting time to hundredths:", e, timeString);
+                    return timeString;
+                }
+            }
+            
+            // --- END OF NEW FORMATTING FUNCTIONS ---
+
+            // Control Bar Logic
+            function massStart() {
+                tableBody.querySelectorAll('tr').forEach((row) => {
+                    const markCheckbox = row.querySelector('.mark-checkbox');
+                    if (markCheckbox && markCheckbox.checked) {
+                        const sw1Radio = row.querySelector('.sw-radio[data-sw="1"]');
+                        const sw2Radio = row.querySelector('.sw-radio[data-sw="2"]');
+                        
+                        let buttonToClick = null;
+                        if (sw1Radio && sw1Radio.checked) {
+                            buttonToClick = row.querySelector('[data-timer-id^="sw1"]');
+                        } else if (sw2Radio && sw2Radio.checked) {
+                            buttonToClick = row.querySelector('[data-timer-id^="sw2"]');
+                        }
+                        
+                        if (buttonToClick && buttonToClick.textContent.trim() === 'START') {
+                            buttonToClick.click();
+                        }
+                    }
+                });
+            }
+
+            function resetAll() {
                 Object.values(runningTimers).forEach(timer => clearInterval(timer.intervalId));
                 runningTimers = {};
-                lapData = {};
-                lapStartTimes = {};
+                
                 tableBody.querySelectorAll('tr').forEach(row => {
                     const markCheckbox = row.querySelector('.mark-checkbox');
                     if (markCheckbox) {
@@ -501,25 +623,33 @@
                             button.classList.remove('bg-red-500', 'hover:bg-red-600');
                             if (button.dataset.timerId.startsWith('sw1')) {
                                 button.classList.add('sw1-bg');
+                                button.style.color = '';
                             } else {
                                 button.classList.add('sw2-bg');
+                                button.style.color = '#000';
                             }
                         });
                         row.querySelectorAll('.lap-btn, .results-btn, .lap-number').forEach(btn => btn.classList.add('hidden'));
                         row.querySelectorAll('.lap-number').forEach(num => num.textContent = '1');
                         const sw1Radio = row.querySelector('.sw-radio[data-sw="1"]');
                         if (sw1Radio) sw1Radio.checked = true;
+                    }
+                    // Reset internal data
+                    if (lapData[row.id]) {
                         lapData[row.id] = { sw1: [], sw2: [] };
+                    }
+                     if (lapStartTimes[row.id]) {
                         lapStartTimes[row.id] = { sw1: null, sw2: null };
                     }
                 });
+                
                 isShowingAll = true;
                 applyRowVisibility();
                 updateToggleViewButton();
                 toggleCheckboxVisibility();
-            });
+            }
 
-            masterMarkCheckbox.addEventListener('change', () => {
+            function toggleAllCheckboxes() {
                 const allCheckboxes = tableBody.querySelectorAll('.mark-checkbox');
                 allCheckboxes.forEach(checkbox => {
                     checkbox.checked = !checkbox.checked;
@@ -527,34 +657,24 @@
                 if (!isShowingAll) {
                     applyRowVisibility();
                 }
-                masterMarkCheckbox.checked = false;
-            });
+                masterMarkCheckbox.checked = false; // Reset master checkbox
+            }
 
-            toggleViewBtn.addEventListener('click', () => {
+            function toggleRowVisibility() {
                 isShowingAll = !isShowingAll;
                 applyRowVisibility();
                 updateToggleViewButton();
                 toggleCheckboxVisibility();
-            });
+            }
+            
+            function selectAllTimers(swNum) {
+                tableBody.querySelectorAll('tr').forEach(row => {
+                    const radio = row.querySelector(`.sw-radio[data-sw="${swNum}"]`);
+                    if (radio) radio.checked = true;
+                });
+            }
 
-            selectAllSW1.addEventListener('change', () => {
-                if (selectAllSW1.checked) {
-                    tableBody.querySelectorAll('tr').forEach(row => {
-                        const sw1Radio = row.querySelector('.sw-radio[data-sw="1"]');
-                        if (sw1Radio) sw1Radio.checked = true;
-                    });
-                }
-            });
-
-            selectAllSW2.addEventListener('change', () => {
-                if (selectAllSW2.checked) {
-                    tableBody.querySelectorAll('tr').forEach(row => {
-                        const sw2Radio = row.querySelector('.sw-radio[data-sw="2"]');
-                        if (sw2Radio) sw2Radio.checked = true;
-                    });
-                }
-            });
-
+            // View Toggling
             function applyRowVisibility() {
                 tableBody.querySelectorAll('tr').forEach(row => {
                     if (isShowingAll) {
@@ -586,28 +706,7 @@
                 }
             }
 
-            function massStart() {
-                tableBody.querySelectorAll('tr').forEach((row) => {
-                    const markCheckbox = row.querySelector('.mark-checkbox');
-                    if (markCheckbox && markCheckbox.checked) {
-                        const sw1Radio = row.querySelector('.sw-radio[data-sw="1"]');
-                        const sw2Radio = row.querySelector('.sw-radio[data-sw="2"]');
-                        
-                        if (sw1Radio && sw1Radio.checked) {
-                            const sw1Button = row.querySelector('[data-timer-id^="sw1"]');
-                            if (sw1Button && sw1Button.textContent.trim() === 'START') {
-                                sw1Button.click();
-                            }
-                        } else if (sw2Radio && sw2Radio.checked) {
-                            const sw2Button = row.querySelector('[data-timer-id^="sw2"]');
-                            if (sw2Button && sw2Button.textContent.trim() === 'START') {
-                                sw2Button.click();
-                            }
-                        }
-                    }
-                });
-            }
-
+            // Export Logic
             function showExportOptions() {
                 if (tableBody.querySelectorAll('tr').length === 0 || tableBody.querySelector('td[colspan="8"]')) {
                     showModal("No data to export.");
@@ -624,10 +723,11 @@
                             Export Detailed (CSV)
                         </button>
                     </div>
-                    <p class="text-sm text-gray-500 mt-4">Summary includes final times. Detailed includes all lap times.</p>
+                    <p class="text-sm text-gray-500 mt-4">This will export data for all *marked* participants.</p>
                 `;
                 showModal(exportContent, true);
                 
+                // Need to re-bind events every time modal is shown
                 setTimeout(() => {
                     document.getElementById('exportSummary')?.addEventListener('click', exportSummary);
                     document.getElementById('exportDetailed')?.addEventListener('click', exportDetailed);
@@ -635,26 +735,52 @@
             }
 
             async function exportSummary() {
-                let csvContent = '"Name","Class","Timing 🕒1","Timing 🕒2"\n';
                 let exportedCount = 0;
-                
+                let rowsToExport = [];
+
+                // First, gather all the data to avoid looping the DOM twice
                 tableBody.querySelectorAll('tr').forEach((row) => {
                     const markCheckbox = row.querySelector('.mark-checkbox');
                     if (markCheckbox && markCheckbox.checked) {
                         const name = row.cells[1].textContent;
                         const studentClass = row.cells[2].textContent;
-                        const timing1 = row.querySelector('.timing-cell.sw1-text').textContent;
-                        const timing2 = row.querySelector('.timing-cell.sw2-text').textContent;
                         
-                        csvContent += `"${name}","${studentClass}","${timing1}","${timing2}"\n`;
+                        const timing1Full = row.querySelector('.timing-cell.sw1-text').textContent;
+                        const timing2Full = row.querySelector('.timing-cell.sw2-text').textContent;
+                        
+                        rowsToExport.push({
+                            name: name,
+                            studentClass: studentClass,
+                            timing1Hundredths: formatTimeHundredths(timing1Full),
+                            timing1Tenths: formatTimeTenths(timing1Full),
+                            timing2Hundredths: formatTimeHundredths(timing2Full),
+                            timing2Tenths: formatTimeTenths(timing2Full)
+                        });
                         exportedCount++;
                     }
                 });
-                
+
                 if (exportedCount === 0) {
                     showModal("No participants are marked to be exported.");
                     return;
                 }
+
+                let csvContent = '';
+
+                // --- Table 1: 0.01s Accuracy ---
+                csvContent += '"Name","Class","Timing 1 (0.01s)","Timing 2 (0.01s)"\n';
+                rowsToExport.forEach(row => {
+                    csvContent += `"${row.name}","${row.studentClass}","${row.timing1Hundredths}","${row.timing2Hundredths}"\n`;
+                });
+
+                // Add separator
+                csvContent += '\n\n';
+
+                // --- Table 2: 0.1s Accuracy (padded to 2 decimals) ---
+                csvContent += '"Name","Class","Timing 1 (0.1s)","Timing 2 (0.1s)"\n';
+                rowsToExport.forEach(row => {
+                    csvContent += `"${row.name}","${row.studentClass}","${row.timing1Tenths}","${row.timing2Tenths}"\n`;
+                });
                 
                 await downloadCSV(csvContent, 'stopwatch_summary.csv');
                 modal.classList.remove('visible');
@@ -662,41 +788,81 @@
             }
 
             async function exportDetailed() {
-                let csvContent = '"Name","Class","Stopwatch","Lap Number","Lap Time","Total Time"\n';
                 let exportedCount = 0;
-                
+                let detailedRowsToExport = [];
+
+                // First, gather all the data
                 tableBody.querySelectorAll('tr').forEach((row) => {
                     const markCheckbox = row.querySelector('.mark-checkbox');
                     if (markCheckbox && markCheckbox.checked) {
                         const name = row.cells[1].textContent;
                         const studentClass = row.cells[2].textContent;
                         const rowId = row.id;
-                        const timing1 = row.querySelector('.timing-cell.sw1-text').textContent;
-                        const timing2 = row.querySelector('.timing-cell.sw2-text').textContent;
                         
+                        const timing1FullTotal = row.querySelector('.timing-cell.sw1-text').textContent;
+                        const timing2FullTotal = row.querySelector('.timing-cell.sw2-text').textContent;
+                        
+                        // Pre-calculate all rounded totals
+                        const timing1HundredthsTotal = formatTimeHundredths(timing1FullTotal);
+                        const timing1TenthsTotal = formatTimeTenths(timing1FullTotal);
+                        const timing2HundredthsTotal = formatTimeHundredths(timing2FullTotal);
+                        const timing2TenthsTotal = formatTimeTenths(timing2FullTotal);
+                        
+                        let hasData = false;
+
+                        // Process SW1 Laps
                         if (lapData[rowId].sw1.length > 0) {
-                            lapData[rowId].sw1.forEach((lapTime, idx) => {
+                            lapData[rowId].sw1.forEach((lapTimeFull, idx) => {
                                 const lapNum = idx + 1;
-                                const totalTime = lapNum === lapData[rowId].sw1.length ? timing1 : '';
-                                csvContent += `"${name}","${studentClass}","🕒1","${lapNum}","${lapTime}","${totalTime}"\n`;
+                                detailedRowsToExport.push({
+                                    name: name,
+                                    studentClass: studentClass,
+                                    sw: 'ST1',
+                                    lapNum: lapNum,
+                                    lapTimeHundredths: formatTimeHundredths(lapTimeFull),
+                                    lapTimeTenths: formatTimeTenths(lapTimeFull),
+                                    totalTimeHundredths: (lapNum === lapData[rowId].sw1.length) ? timing1HundredthsTotal : '',
+                                    totalTimeTenths: (lapNum === lapData[rowId].sw1.length) ? timing1TenthsTotal : ''
+                                });
                             });
-                            exportedCount++;
-                        } else if (timing1 !== '00:00.000') {
-                            csvContent += `"${name}","${studentClass}","🕒1","1","${timing1}","${timing1}"\n`;
-                            exportedCount++;
+                            hasData = true;
+                        } else if (timing1FullTotal !== '00:00.000') {
+                            // Handle case with no laps, but a final time
+                            detailedRowsToExport.push({
+                                name: name, studentClass: studentClass, sw: 'ST1', lapNum: 1,
+                                lapTimeHundredths: timing1HundredthsTotal, lapTimeTenths: timing1TenthsTotal,
+                                totalTimeHundredths: timing1HundredthsTotal, totalTimeTenths: timing1TenthsTotal
+                            });
+                            hasData = true;
                         }
                         
+                        // Process SW2 Laps
                         if (lapData[rowId].sw2.length > 0) {
-                            lapData[rowId].sw2.forEach((lapTime, idx) => {
+                            lapData[rowId].sw2.forEach((lapTimeFull, idx) => {
                                 const lapNum = idx + 1;
-                                const totalTime = lapNum === lapData[rowId].sw2.length ? timing2 : '';
-                                csvContent += `"${name}","${studentClass}","🕒2","${lapNum}","${lapTime}","${totalTime}"\n`;
+                                detailedRowsToExport.push({
+                                    name: name,
+                                    studentClass: studentClass,
+                                    sw: 'ST2',
+                                    lapNum: lapNum,
+                                    lapTimeHundredths: formatTimeHundredths(lapTimeFull),
+                                    lapTimeTenths: formatTimeTenths(lapTimeFull),
+                                    totalTimeHundredths: (lapNum === lapData[rowId].sw2.length) ? timing2HundredthsTotal : '',
+                                    totalTimeTenths: (lapNum === lapData[rowId].sw2.length) ? timing2TenthsTotal : ''
+                                });
                             });
-                            exportedCount++;
-                        } else if (timing2 !== '00:00.000') {
-                            csvContent += `"${name}","${studentClass}","🕒2","1","${timing2}","${timing2}"\n`;
-                            exportedCount++;
+                            hasData = true;
+                        } else if (timing2FullTotal !== '00:00.000') {
+                            // Handle case with no laps, but a final time
+                            detailedRowsToExport.push({
+                                name: name, studentClass: studentClass, sw: 'ST2', lapNum: 1,
+                                lapTimeHundredths: timing2HundredthsTotal, lapTimeTenths: timing2TenthsTotal,
+                                totalTimeHundredths: timing2HundredthsTotal, totalTimeTenths: timing2TenthsTotal
+                            });
+                            hasData = true;
                         }
+                        
+                        if(hasData) exportedCount++;
                     }
                 });
                 
@@ -704,7 +870,24 @@
                     showModal("No timing data to export.");
                     return;
                 }
-                
+
+                let csvContent = '';
+
+                // --- Table 1: 0.01s Accuracy ---
+                csvContent += '"Name","Class","Stopwatch","Lap Number","Lap Time (0.01s)","Total Time (0.01s)"\n';
+                detailedRowsToExport.forEach(row => {
+                    csvContent += `"${row.name}","${row.studentClass}","${row.sw}","${row.lapNum}","${row.lapTimeHundredths}","${row.totalTimeHundredths}"\n`;
+                });
+
+                // Add separator
+                csvContent += '\n\n';
+
+                // --- Table 2: 0.1s Accuracy (padded to 2 decimals) ---
+                csvContent += '"Name","Class","Stopwatch","Lap Number","Lap Time (0.1s)","Total Time (0.1s)"\n';
+                detailedRowsToExport.forEach(row => {
+                    csvContent += `"${row.name}","${row.studentClass}","${row.sw}","${row.lapNum}","${row.lapTimeTenths}","${row.totalTimeTenths}"\n`;
+                });
+
                 await downloadCSV(csvContent, 'stopwatch_detailed.csv');
                 modal.classList.remove('visible');
                 showModal(`Detailed data exported successfully!`);
@@ -713,42 +896,37 @@
             async function downloadCSV(content, filename) {
                 const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
                 
-                // Try to use Web Share API (works on mobile and some desktop browsers)
+                // Try to use Web Share API
                 if (navigator.share && navigator.canShare) {
                     try {
                         const file = new File([blob], filename, { type: 'text/csv' });
-                        
-                        // Check if we can share files
                         if (navigator.canShare({ files: [file] })) {
                             await navigator.share({
                                 title: 'Stopwatch Results',
                                 text: 'Here are the stopwatch timing results',
                                 files: [file]
                             });
-                            console.log('Share successful');
-                            return;
+                            return; // Share was successful
                         }
                     } catch (error) {
-                        // User cancelled or share failed, fall back to download
-                        console.log('Share cancelled or failed:', error.message);
+                        // Share failed or was cancelled, fall back to download
+                        console.log('Share failed:', error.message);
                     }
                 }
                 
-                // Fallback: Traditional download method
+                // Fallback: Traditional download
                 const link = document.createElement('a');
                 const url = URL.createObjectURL(blob);
-                
                 link.setAttribute('href', url);
                 link.setAttribute('download', filename);
                 link.style.visibility = 'hidden';
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
-                // Clean up the URL object
                 setTimeout(() => URL.revokeObjectURL(url), 100);
             }
 
+            // Modal and Credits
             function showModal(content, isHtml = false) {
                 if (isHtml) {
                     modalMessage.innerHTML = content;
@@ -757,6 +935,7 @@
                 }
                 modal.classList.add('visible');
                 
+                // Re-bind close button just in case modal content replaced it
                 setTimeout(() => {
                     const closeBtn = document.getElementById('modalCloseBtn');
                     if (closeBtn) {
@@ -765,23 +944,12 @@
                 }, 0);
             }
 
-            modalCloseBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                modal.classList.remove('visible');
-            });
-            
-            modal.addEventListener('click', (event) => { 
-                if (event.target === modal) {
-                    modal.classList.remove('visible');
-                }
-            });
-
-            creditsLink.addEventListener('click', async (event) => {
+            async function showCredits(event) {
                 event.preventDefault();
                 
                 let versionHtml = '';
                 try {
+                    // Fetch version from GitHub repo
                     const response = await fetch('https://raw.githubusercontent.com/zaniestp/stopwatchPE/main/ver');
                     if (response.ok) {
                         const versionText = await response.text();
@@ -806,7 +974,7 @@
                     </div>
                 `;
                 showModal(creditsContent, true);
-            });
+            }
         });
     </script>
 </body>
