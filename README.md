@@ -1,6 +1,6 @@
 This program is co-developed with the PE department of Presbyterian High School
 
-#https://zaniestp.github.io/stopwatchPE
+## https://zaniestp.github.io/stopwatchPE
 *********************************************************
 ```text
       /\_/\
